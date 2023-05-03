@@ -6,6 +6,9 @@ import argparse
 import requests
 from bs4 import BeautifulSoup
 
+from requests.packages import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
 def get_tag_lst(args):
     tag_lst = []
     with open(args.file_name) as f:
