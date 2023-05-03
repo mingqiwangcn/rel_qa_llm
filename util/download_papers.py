@@ -22,9 +22,16 @@ def get_tag_lst(args):
 
 def get_paper_url(tag):
     browser.get('https://doi.org/' + tag)
-    el = WebDriverWait(browser, timeout=10).until(lambda e: e.find_element(By.TAG_NAME,"html"))
     url = browser.current_url
-    page_source = browser.page_source
+    page_source = None
+    try_count = 0 
+    while page_source is None:
+        try:
+            page_source = browser.page_source()
+        except:
+            try_count += 1
+            print('retry page source ', tag, ' try_count=' try_count)
+
     out_info = {
         'tag':tag,
         'url':url,
