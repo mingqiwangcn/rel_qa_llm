@@ -1,9 +1,11 @@
 from tqdm import tqdm
 from selenium import webdriver
+from selenium.webdriver.support.wait import WebDriverWait
 from multiprocessing import Pool as ProcessPool
 import json
 import os
 import argparse
+
 
 def init_browser():
     global browser
@@ -19,6 +21,7 @@ def get_tag_lst(args):
 
 def get_paper_url(tag):
     browser.get('https://doi.org/' + tag)
+    el = WebDriverWait(browser, timeout=10).until(lambda e: e.find_element(By.TAG_NAME,"html"))
     url = browser.current_url
     page_source = browser.page_source
     out_info = {
