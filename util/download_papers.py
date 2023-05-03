@@ -1,17 +1,10 @@
 from tqdm import tqdm
-from selenium import webdriver
-from selenium.webdriver.support.wait import WebDriverWait
-from selenium.webdriver.common.by import By
 from multiprocessing import Pool as ProcessPool
 import json
 import os
 import argparse
-
-
-def init_browser():
-    global browser
-    option = webdriver.FirefoxOptions()
-    browser = webdriver.Firefox(options=option)
+import requests
+from bs4 import BeautifulSoup
 
 def get_tag_lst(args):
     tag_lst = []
@@ -21,27 +14,15 @@ def get_tag_lst(args):
     return tag_lst
 
 def get_paper_url(tag):
-    browser.get('https://doi.org/' + tag)
-    url = browser.current_url
-    page_source = None
-    try_count = 0 
-    while page_source is None:
-        try:
-            page_source = browser.page_source()
-        except:
-            page_source = None
-            browser.get('https://doi.org/' + tag)
-            url = browser.current_url
-            try_count += 1
-            print('retry page source ', tag, ' try_count=', try_count)
-    
-    if try_count > 0:
-        print('retry ok ', tag, ' try_count=', try_count)
-
+    req_url = 'https://doi.org/' + tag
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36'}
+    res = requests.get(req_url, headers=headers)
+    source_code = res.text
+    #soup = BeautifulSoup(source_code, 'html.parser')
     out_info = {
         'tag':tag,
-        'url':url,
-        'html':page_source,
+        'url':res.url,
+        'html':source_code,
     }
     return out_info
 
@@ -57,7 +38,7 @@ def main(args):
         os.makedirs('./outputs')
     tag_lst = get_tag_lst(args)
     cpu_count = os.cpu_count()
-    work_pool = ProcessPool(cpu_count, initializer=init_browser)
+    work_pool = ProcessPool(cpu_count)
     arg_info_lst = []
     out_file_no = 1
     out_buffer = []
