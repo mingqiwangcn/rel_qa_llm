@@ -3,19 +3,16 @@ from multiprocessing import Pool as ProcessPool
 import json
 import os
 import argparse
-import requests
-from bs4 import BeautifulSoup
-import ssl
-
 from selenium import webdriver
-from selenium.webdriver.chrome.service import Service as ChromeService
-from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
 
 def init():
     global driver
-    driver = webdriver.Chrome(service=ChromeService( 
-	ChromeDriverManager().install()))
-
+    options = Options()
+    options.add_argument('--headless')
+    ser = Service('/usr/bin/chromedriver')
+    driver = webdriver.Chrome(service=ser, options=options)
 
 def get_tag_lst(args):
     tag_lst = []
@@ -71,4 +68,9 @@ def get_args():
 
 if __name__ == '__main__':
     args = get_args()
+
     main(args)
+
+
+
+
