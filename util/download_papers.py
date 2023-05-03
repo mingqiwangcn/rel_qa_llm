@@ -18,13 +18,9 @@ def get_tag_lst(args):
     return tag_lst
 
 def get_paper_url(tag):
-    try:
-        browser.get('https://doi.org/' + tag)
-        url = browser.current_url
-        page_source = browser.page_source
-    except:
-        url = None
-        page_source = None 
+    browser.get('https://doi.org/' + tag)
+    url = browser.current_url
+    page_source = browser.page_source
     out_info = {
         'tag':tag,
         'url':url,
@@ -48,7 +44,6 @@ def main(args):
     arg_info_lst = []
     out_file_no = 1
     out_buffer = []
-    init_browser()
     for out_info in tqdm(work_pool.imap_unordered(get_paper_url, tag_lst), total=len(tag_lst)):
         out_buffer.append(out_info)
         if len(out_buffer) >= 10000:
