@@ -1,15 +1,14 @@
 from bs4 import BeautifulSoup
 from tqdm import tqdm
 from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
 from multiprocessing import Pool as ProcessPool
 import json
+import os
 
 def init_browser():
-    global driver
-    options = Options()
-    options.add_argument("--headless")
-    driver = webdriver.Chrome(options=options)
+    global browser
+    option = webdriver.FirefoxOptions()
+    browser = webdriver.Firefox(options=option)
 
 def get_tag_lst():
     tag_lst = []
@@ -18,13 +17,12 @@ def get_tag_lst():
             tag_lst.append(line.strip())
     return tag_lst
 
-def get_paper(tag):
-    driver.get('https://doi.org/' + tag)
-    html = driver.page_source
+def get_paper_url(tag):
+    browser.get('https://doi.org/' + tag)
+    url = browser.current_url
     out_info = {
         'tag':tag,
-        'url':driver.current_url,
-        'html':driver.page_source,
+        'url':url,
     }
     return out_info
 
@@ -36,33 +34,22 @@ def write_buffer(out_buffer, out_file_no):
     
 def main():
     tag_lst = get_tag_lst()
-    work_pool = ProcessPool(48, initializer=init_browser)
+    cpu_count = os.cpu_count()
+    work_pool = ProcessPool(cpu_count, initializer=init_browser)
     arg_info_lst = []
-
     out_file_no = 1
     out_buffer = []
-    for out_info in tqdm(work_pool.imap_unordered(get_paper, tag_lst), total=len(tag_lst)):
+    init_browser()
+    for out_info in tqdm(work_pool.imap_unordered(get_paper_url, tag_lst), total=len(tag_lst)):
         out_buffer.append(out_info)
-        if len(out_buffer) >= 100:
+        if len(out_buffer) >= 20000:
             write_buffer(out_buffer, out_file_no) 
             out_buffer = []
             out_file_no += 1
-    
-    write_buffer(out_buffer, out_file_no) 
-    out_buffer = []
-    out_file_no += 1
-        
-    '''
-    soup = BeautifulSoup(html)
-    item_lst = soup.findAll("meta", {"property" : "og:description"})
-    if len(item_lst) > 0:
-        item = item_lst[0]
-        print('\n------------------Abstract----------------\n')
-        print(item['content'])
-    else:
-        print('\n Abstract Not Found \n')
-
-    '''
+    if len(out_buffer) > 0: 
+        write_buffer(out_buffer, out_file_no) 
+        out_buffer = []
+        out_file_no += 1
         
 if __name__ == '__main__':
     main()
