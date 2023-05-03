@@ -1,6 +1,7 @@
 from tqdm import tqdm
 from selenium import webdriver
 from selenium.webdriver.support.wait import WebDriverWait
+from selenium.webdriver.common.by import By
 from multiprocessing import Pool as ProcessPool
 import json
 import os
