@@ -18,12 +18,17 @@ def get_tag_lst(args):
     return tag_lst
 
 def get_paper_url(tag):
-    browser.get('https://doi.org/' + tag)
-    url = browser.current_url
+    try:
+        browser.get('https://doi.org/' + tag)
+        url = browser.current_url
+        page_source = browser.page_source
+    except:
+        url = None
+        page_source = None 
     out_info = {
         'tag':tag,
         'url':url,
-        'html':browser.page_source,
+        'html':page_source,
     }
     return out_info
 
