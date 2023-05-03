@@ -16,7 +16,7 @@ def get_tag_lst(args):
 def get_paper_url(tag):
     req_url = 'https://doi.org/' + tag
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36'}
-    res = requests.get(req_url, headers=headers)
+    res = requests.get(req_url, headers=headers, verify=False)
     source_code = res.text
     #soup = BeautifulSoup(source_code, 'html.parser')
     out_info = {
