@@ -23,6 +23,7 @@ def get_paper_url(tag):
     out_info = {
         'tag':tag,
         'url':url,
+        'html':browser.page_source,
     }
     return out_info
 
@@ -45,7 +46,7 @@ def main(args):
     init_browser()
     for out_info in tqdm(work_pool.imap_unordered(get_paper_url, tag_lst), total=len(tag_lst)):
         out_buffer.append(out_info)
-        if len(out_buffer) >= 20000:
+        if len(out_buffer) >= 10000:
             write_buffer(args, out_buffer, out_file_no) 
             out_buffer = []
             out_file_no += 1
