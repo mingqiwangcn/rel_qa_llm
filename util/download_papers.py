@@ -5,7 +5,7 @@ import os
 import argparse
 import requests
 from bs4 import BeautifulSoup
-
+import ssl
 
 def get_tag_lst(args):
     tag_lst = []
