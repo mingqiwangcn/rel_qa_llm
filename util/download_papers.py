@@ -7,8 +7,15 @@ import requests
 from bs4 import BeautifulSoup
 import ssl
 
-from requests.packages import urllib3
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service as ChromeService
+from webdriver_manager.chrome import ChromeDriverManager
+
+def init():
+    global driver
+    driver = webdriver.Chrome(service=ChromeService( 
+	ChromeDriverManager().install()))
+
 
 def get_tag_lst(args):
     tag_lst = []
@@ -19,14 +26,13 @@ def get_tag_lst(args):
 
 def get_paper_url(tag):
     req_url = 'https://doi.org/' + tag
-    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36'}
-    res = requests.get(req_url, headers=headers, verify=ssl.CERT_NONE)
-    source_code = res.text
-    #soup = BeautifulSoup(source_code, 'html.parser')
+    driver.get(req_url)
+    url = driver.current_url
+    page_source = driver.page_source
     out_info = {
         'tag':tag,
-        'url':res.url,
-        'html':source_code,
+        'url':url,
+        'html':page_source,
     }
     return out_info
 
@@ -42,7 +48,7 @@ def main(args):
         os.makedirs('./outputs')
     tag_lst = get_tag_lst(args)
     cpu_count = os.cpu_count()
-    work_pool = ProcessPool(cpu_count)
+    work_pool = ProcessPool(cpu_count, initializer=init)
     arg_info_lst = []
     out_file_no = 1
     out_buffer = []
