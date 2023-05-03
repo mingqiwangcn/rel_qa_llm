@@ -34,6 +34,8 @@ def write_buffer(args, out_buffer, out_file_no):
             f_o.write(json.dumps(item) + '\n')
     
 def main(args):
+    if not os.path.isdir('./outputs'):
+        os.makedirs('./outputs')
     tag_lst = get_tag_lst(args)
     cpu_count = os.cpu_count()
     work_pool = ProcessPool(cpu_count, initializer=init_browser)
