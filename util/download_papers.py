@@ -29,8 +29,14 @@ def get_paper_url(tag):
         try:
             page_source = browser.page_source()
         except:
+            page_source = None
+            browser.get('https://doi.org/' + tag)
+            url = browser.current_url
             try_count += 1
             print('retry page source ', tag, ' try_count=', try_count)
+    
+    if try_count > 0:
+        print('retry ok ', tag, ' try_count=', try_count)
 
     out_info = {
         'tag':tag,
