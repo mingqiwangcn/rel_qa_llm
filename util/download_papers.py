@@ -30,7 +30,7 @@ def get_paper_url(tag):
             page_source = browser.page_source()
         except:
             try_count += 1
-            print('retry page source ', tag, ' try_count=' try_count)
+            print('retry page source ', tag, ' try_count=', try_count)
 
     out_info = {
         'tag':tag,
