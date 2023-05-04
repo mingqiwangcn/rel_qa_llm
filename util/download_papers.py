@@ -26,16 +26,16 @@ def get_paper_url(tag):
     try:
         driver.get(req_url)
         url = driver.current_url
-        page_source = driver.page_source
+        #page_source = driver.page_source
     except:
         url = None
-        page_source = None
+        #page_source = None
         print('err', tag)
 
     out_info = {
         'tag':tag,
         'url':url,
-        'html':page_source,
+        #'html':page_source,
     }
     return out_info
 
