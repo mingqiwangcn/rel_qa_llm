@@ -23,9 +23,15 @@ def get_tag_lst(args):
 
 def get_paper_url(tag):
     req_url = 'https://doi.org/' + tag
-    driver.get(req_url)
-    url = driver.current_url
-    page_source = driver.page_source
+    try:
+        driver.get(req_url)
+        url = driver.current_url
+        page_source = driver.page_source
+    except:
+        url = None
+        page_source = None
+        print('err', tag)
+
     out_info = {
         'tag':tag,
         'url':url,
