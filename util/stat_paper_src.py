@@ -37,7 +37,10 @@ def read_paper_file(paper_file):
                         'source':source,
                         'tag':item['tag'],
                         'url':url,
+                        'count':1,
                     }
+                else:
+                    out_data[source]['count'] += 1
     return out_data
 
 def main(args):
@@ -60,6 +63,8 @@ def main(args):
         for source in out_info:
             if source not in out_buffer:
                 out_buffer[source] = out_info[source]
+            else:
+                out_buffer[source]['count'] += out_info[source]['count']
 
     write_buffer(args, out_buffer, out_file) 
 
