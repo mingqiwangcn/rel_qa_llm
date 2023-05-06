@@ -24,7 +24,10 @@ def main():
                              .MATERIAL_AMOUNT { font-weight: bold; color:orange } \n \
                              .PROP_NAME { font-weight: bold; color: cornflowerblue } \n \
                              .PROP_VALUE { font-weight: bold; color:blue } \n \
-                             table { border-spacing: 0 30px; } \n \
+                             td { \n \
+                                    padding-top: 12px; \n \
+                                    padding-bottom: 6px; \n \
+                             } \n \
                              th.sticky-header { \n \
                                   position: sticky; \n \
                                   top: 0; \n \
