@@ -1,0 +1,7 @@
+Django
+selenium
+tqdm
+transformers
+torch==1.12.1
+openai
+notebook

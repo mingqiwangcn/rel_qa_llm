@@ -1,5 +1,0 @@
-requests[security]
-selenium
-beautifulsoup4
-tqdm
-
