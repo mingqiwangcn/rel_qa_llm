@@ -13,7 +13,7 @@ def chat_complete(prompt):
             {"role": "system", "content": "You are a helpful assistant."},
             {"role": "user", "content": prompt},
         ],
-        temperature=0.7,
+        temperature=0, # to get determinstic output so that it is easy to control by prompt.
     )
     out_msg = response['choices'][0]['message']['content']
     return out_msg

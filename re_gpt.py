@@ -29,9 +29,12 @@ def main():
         return
     gpt.set_key(api_key)
     args = get_args()
+    
     #table_draft = get_table_draft(args)
+    #show_output(table_draft)
     #with open('./output/table_draft.json', 'w') as f_o:
     #    f_o.write(json.dumps(table_draft))
+
     with open('./output/table_draft.json') as f:
         table_draft = json.load(f)
     
@@ -43,16 +46,21 @@ def main():
         check_entities(abstract, out_table_draft)
 
 def check_entities(abstract, row_data):
-    question_lst = []
+    prop_dict = {}
     for idx, row_item in enumerate(row_data):
         entity = row_item[0]
-        prop_name = row_item[1]
+        prop_name = row_item[1].strip()
         prop_value = row_item[2]
-        
-        row_no = idx + 1
-        question = f'{row_no}. The {prop_name} of what is talked about explicitly ?'
-        question_lst.append(question)
-    
+        if prop_name not in prop_dict:
+            prop_key = prop_name.lower()
+            prop_dict[prop_key] = f'The {prop_name} of what entity is given explicitly?'
+
+    question_lst = []
+    prop_lst = []
+    for prop in prop_dict:
+        prop_lst.append(prop)
+        question_lst.append(prop_dict[prop])
+
     batch_question_text = '\n'.join(question_lst)
     field_dict = {
         'passage':abstract,
@@ -105,6 +113,7 @@ def get_table_draft(args):
             ignore_prop_set.update(prop_set)
 
             output_row_data.extend(table_dict['rows'])
+            
     return output_row_data
 
 def show_output(output_row_data):
@@ -120,13 +129,13 @@ def process_response(response):
     prop_set = set()
     for row_text in lines:
         item_eles = row_text.split(gpt.SEP_TOKEN)
+        item_eles = [a.strip() for a in item_eles]
         if len(item_eles) < 3:
             continue
         table_dict['rows'].append(item_eles)
         prop = item_eles[1].strip()
         prop_set.add(prop)
     return table_dict, prop_set
-        
 
 def get_args():
     parser = argparse.ArgumentParser()
