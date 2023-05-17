@@ -38,7 +38,36 @@ def main():
     out_table_draft = merge_row_data(table_draft)
     out_table_draft = sorted(out_table_draft, key=lambda x: x[1])
     show_output(out_table_draft)
+    
+    for abstract in read_abstract(args):
+        check_entities(abstract, out_table_draft)
 
+def check_entities(abstract, row_data):
+    question_lst = []
+    for idx, row_item in enumerate(row_data):
+        entity = row_item[0]
+        prop_name = row_item[1]
+        prop_value = row_item[2]
+        
+        row_no = idx + 1
+        question = f'{row_no}. The {prop_name} of what is talked about explicitly ?'
+        question_lst.append(question)
+    
+    batch_question_text = '\n'.join(question_lst)
+    field_dict = {
+        'passage':abstract,
+        'questions':batch_question_text
+    }
+    entity_prompt = read_prompt('entity', field_dict) 
+    print_msg(entity_prompt)
+    response = gpt.chat_complete(entity_prompt)
+    print_msg(response)
+    with open('./output/entity_check.json', 'w') as f_o:
+        f_o.write(json.dumps(response))
+
+def print_msg(msg):
+    print('-'*100)
+    print(msg)
 
 def merge_row_data(row_data):
     row_dict = {}
@@ -79,6 +108,7 @@ def get_table_draft(args):
     return output_row_data
 
 def show_output(output_row_data):
+    print('-'*100)
     for row_info in output_row_data:
         text = ' | '.join(row_info)
         print(text)

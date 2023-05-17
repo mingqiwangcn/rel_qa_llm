@@ -1,0 +1,14 @@
+You are given a passage and need to follow the instructions to answer some questions based on the passage.
+
+Instructions:
+1. Each answer is in a new line. 
+2. The answer to a question must start with the same number as that of the question. 
+4. You must answer by including the full evidence sentences with two double quotes. You should never use your own words.
+
+Passage:
+{{passage}}
+
+Questions:
+{{questions}}
+
+Answers: 
