@@ -29,23 +29,23 @@ def main():
         return
     gpt.set_key(api_key)
     args = get_args()
-    
-    #table_draft = get_table_draft(args)
-    #show_output(table_draft)
-    #with open('./output/table_draft.json', 'w') as f_o:
-    #    f_o.write(json.dumps(table_draft))
-
-    with open('./output/table_draft.json') as f:
-        table_draft = json.load(f)
-    
-    out_table_draft = merge_row_data(table_draft)
-    out_table_draft = sorted(out_table_draft, key=lambda x: x[1])
-    show_output(out_table_draft)
-    
     for abstract in read_abstract(args):
-        check_entities(abstract, out_table_draft)
+        # Step 1, Get a start table draft with possibly complete property names
+        table_draft = get_table_draft(abstract)
+        show_output(table_draft)
+        with open('./output/table_draft.json', 'w') as f_o:
+            f_o.write(json.dumps(table_draft))
 
-def check_entities(abstract, row_data):
+        with open('./output/table_draft.json') as f:
+            table_draft = json.load(f)
+
+        #Step 2, Get Entity by Property Name
+        res_entity = property_to_entity(abstract, table_draft)
+        print_msg(res_entity)
+        with open('./output/prop_entity.txt', 'w') as f_o:
+            f_o.write(res_entity)
+        
+def property_to_entity(abstract, row_data):
     prop_dict = {}
     for idx, row_item in enumerate(row_data):
         entity = row_item[0]
@@ -53,7 +53,8 @@ def check_entities(abstract, row_data):
         prop_value = row_item[2]
         if prop_name not in prop_dict:
             prop_key = prop_name.lower()
-            prop_dict[prop_key] = f'The {prop_name} of what entity is given explicitly?'
+            question = f'The {prop_name} of what entity is given explicitly?'
+            prop_dict[prop_key] = question
 
     question_lst = []
     prop_lst = []
@@ -69,9 +70,7 @@ def check_entities(abstract, row_data):
     entity_prompt = read_prompt('entity', field_dict) 
     print_msg(entity_prompt)
     response = gpt.chat_complete(entity_prompt)
-    print_msg(response)
-    with open('./output/entity_check.json', 'w') as f_o:
-        f_o.write(json.dumps(response))
+    return response
 
 def print_msg(msg):
     print('-'*100)
@@ -87,34 +86,33 @@ def merge_row_data(row_data):
     out_row_data = row_dict.values()
     return out_row_data
 
-def get_table_draft(args):  
+def get_table_draft(abstract):  
     output_row_data = [] 
     ignore_prop_set = set()
-    for abstract in read_abstract(args):
-        for itr in range(2):
-            try_no = itr + 1
-            if try_no <= 1:
-                field_dict = {
-                    'passage':abstract
-                }
-            else:
-                ignore_prop_lst = list(ignore_prop_set)
-                ignore_prop_lst = ['"' + a + '"' for a in ignore_prop_lst]
-                ignore_prop_str = ' , '.join(ignore_prop_lst)
-                field_dict = {
-                    'ignore_props':ignore_prop_str,
-                    'passage':abstract
-                }
-            start_prompt = read_prompt('start_%d' % try_no, field_dict) 
-            t1 = time.time()            
-            response = gpt.chat_complete(start_prompt)
-            t2 = time.time()
-            table_dict , prop_set = process_response(response)
-            ignore_prop_set.update(prop_set)
-
-            output_row_data.extend(table_dict['rows'])
-            
-    return output_row_data
+    max_num_try = 2
+    for itr in range(max_num_try):
+        try_no = itr + 1
+        if try_no <= 1:
+            field_dict = {
+                'passage':abstract
+            }
+        else:
+            ignore_prop_lst = list(ignore_prop_set)
+            ignore_prop_lst = ['"' + a + '"' for a in ignore_prop_lst]
+            ignore_prop_str = ' , '.join(ignore_prop_lst)
+            field_dict = {
+                'ignore_props':ignore_prop_str,
+                'passage':abstract
+            }
+        start_prompt = read_prompt('start_%d' % try_no, field_dict) 
+        response = gpt.chat_complete(start_prompt)
+        table_dict , prop_set = process_response(response)
+        ignore_prop_set.update(prop_set)
+        output_row_data.extend(table_dict['rows'])
+    
+    out_table_draft = merge_row_data(output_row_data)
+    out_table_draft_sorted = sorted(out_table_draft, key=lambda x: x[1])
+    return out_table_draft_sorted
 
 def show_output(output_row_data):
     print('-'*100)

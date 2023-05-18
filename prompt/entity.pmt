@@ -1,7 +1,7 @@
-You are given a passage and need to follow the instructions to answer questions.
+You are given a passage and need to follow the instructions to find the answer entities to the questions.
 
 Instructions:
-1. The answer must include evidence sentence from the passage
+The answer must be in the format "{short answer entities} #@ {evidence sentence from the passage}"
 
 Passage:
 {{passage}}
