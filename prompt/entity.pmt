@@ -1,7 +1,8 @@
 You are given a passage and need to follow the instructions to find the answer entities to the questions.
 
 Instructions:
-The answer must be in the format "{short answer entities} #@ {evidence sentence from the passage}"
+1. The answer must be in the format "{answer entities} #@ {evidence sentence from the passage}"
+2. The entities in {answer entities} must be separated by the token "|&". 
 
 Passage:
 {{passage}}
