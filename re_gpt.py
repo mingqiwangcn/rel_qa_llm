@@ -3,6 +3,7 @@ import time
 import json
 import argparse
 import gpt
+import pandas as pd
 
 STOP_WORDS = ['the', 'of', 'a']
 
@@ -35,30 +36,82 @@ def main():
         # Step 1, Get a start table draft with possibly complete property names
         '''
         table_draft = get_table_draft(abstract)
-        show_output(table_draft)
         with open('./output/table_draft.json', 'w') as f_o:
             f_o.write(json.dumps(table_draft))
         
         '''
+        #Step 2, Get Entity by Property Name
         with open('./output/table_draft.json') as f:
             table_draft = json.load(f)
-        
-        #Step 2, Get Entity by Property Name
-        
+        show_table(table_draft)
         '''
         prop_entity_map = property_to_entity(abstract, table_draft)
         print_msg(prop_entity_map)
         with open('./output/prop_entity.json', 'w') as f_o:
             f_o.write(json.dumps(prop_entity_map))
+        
         '''
-
+        
         #Sep 3, Check row by Property-Entity map
         with open('./output/prop_entity.json') as f:
             prop_entity_map = json.load(f)
-        
-        show_table(table_draft)
         show_dict(prop_entity_map)
 
+        check_prop_to_entity(abstract, table_draft, prop_entity_map)
+
+        show_table(table_draft)
+        
+
+def exact_match(text_1, text_lst):
+    for text_2 in text_lst:
+        matched = (text_1.strip().lower() == text_2.strip().lower())
+        if matched:
+            return True
+    return False
+
+def check_prop_to_entity(abstract, table_draft, prop_entity_map):
+    question_lst = []
+    for idx, table_row in enumerate(table_draft):
+        prop = table_row['prop']
+        prop_entity_lst = prop_entity_map[prop.lower()]
+        row_entity = table_row['entity']
+        if exact_match(row_entity, prop_entity_lst):
+            table_row['prop->entity'] = 'Y'
+            print(f'row {idx} is exact match')
+        else:
+            question = f'Is {row_entity} {prop_entity_lst[0]}'
+            for offset in range(1, len(prop_entity_lst)):
+                question += f' or {prop_entity_lst[offset]}'
+            question += ' ?'
+            question_info = {
+                'row_idx':idx,
+                'text':question
+            }
+            question_lst.append(question_info)
+
+    if len(question_lst) == 0:
+        return
+    
+    batch_question_text = '\n'.join([a['text'] for a in question_lst])
+    field_dict = {
+        'passage':abstract,
+        'questions':batch_question_text
+    }
+    prompt = read_prompt('prop_to_entity', field_dict)
+    print_msg(prompt)
+    response = gpt.chat_complete(prompt)
+    print_msg(response)
+    answer_lst = response.split('\n')
+    for offset, answer_text in enumerate(answer_lst):
+        row_idx = question_lst[offset]['row_idx']
+        table_row = table_draft[row_idx]  
+        if answer_text[:4].lower() == 'yes,':
+            table_row['prop->entity'] = 'Y'
+        elif answer_text[:3].lower() == 'no,':
+            table_row['prop->entity'] = 'N'
+        else:
+            raise ValueError(f'Unexpected answer f{answer_text}')
+    
 def show_dict(dict_data):
     print('_'*100)
     for key in dict_data:
@@ -67,9 +120,8 @@ def show_dict(dict_data):
 def property_to_entity(abstract, row_data):
     prop_dict = {}
     for idx, row_item in enumerate(row_data):
-        entity = row_item[0]
-        prop_name = row_item[1].strip()
-        prop_value = row_item[2]
+        entity = row_item['entity']
+        prop_name = row_item['prop'].strip()
         if prop_name not in prop_dict:
             prop_key = prop_name.lower()
             question = f'The {prop_name} of what entity is given explicitly?'
@@ -147,14 +199,21 @@ def get_table_draft(abstract):
     
     out_table_draft = merge_row_data(output_row_data)
     out_table_draft_sorted = sorted(out_table_draft, key=lambda x: x[1])
-    return out_table_draft_sorted
 
-def show_table(output_row_data):
+    table_data = []
+    for row_item in out_table_draft_sorted:
+        table_row = {
+            'entity':row_item[0],
+            'prop':row_item[1],
+            'val':row_item[2]
+        }
+        table_data.append(table_row)
+    return table_data
+
+def show_table(table_data):
+    df = pd.DataFrame(table_data)
     print('-'*100)
-    for row_info in output_row_data:
-        text = ' | '.join(row_info)
-        print(text)
-
+    print(df)
 
 def process_response(response):
     lines = response.split('\n')
