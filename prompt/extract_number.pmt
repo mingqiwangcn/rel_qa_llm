@@ -4,6 +4,7 @@ Passages:
 weight greater than 60 kg for the group.
 
 Answers:
+entity | property name | property value | value unit | category 
 A | length | 1.25 | cm | exact
 B | length | 2.36 | cm | exact
 C | length | 3.69 | cm | exact
