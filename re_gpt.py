@@ -40,7 +40,7 @@ def main():
             f_o.write(json.dumps(table_draft))
         
         '''
-        #Step 2, Get Entity by Property Name
+        #Step 2, Get 1-hop Entity by Property Name
         with open('./output/table_draft.json') as f:
             table_draft = json.load(f)
         show_table(table_draft)
@@ -60,7 +60,7 @@ def main():
         check_prop_to_entity(abstract, table_draft, prop_entity_map)
 
         show_table(table_draft)
-        
+
 
 def exact_match(text_1, text_lst):
     for text_2 in text_lst:
@@ -74,9 +74,10 @@ def check_prop_to_entity(abstract, table_draft, prop_entity_map):
     for idx, table_row in enumerate(table_draft):
         prop = table_row['prop']
         prop_entity_lst = prop_entity_map[prop.lower()]
+        table_row['1_hop_entity_from_prop'] = '  '.join(prop_entity_lst)
         row_entity = table_row['entity']
         if exact_match(row_entity, prop_entity_lst):
-            table_row['prop->entity'] = 'Y'
+            table_row['entity_matched'] = 'Y(EM)'
             print(f'row {idx} is exact match')
         else:
             question = f'Is {row_entity} {prop_entity_lst[0]}'
@@ -95,7 +96,8 @@ def check_prop_to_entity(abstract, table_draft, prop_entity_map):
     batch_question_text = '\n'.join([a['text'] for a in question_lst])
     field_dict = {
         'passage':abstract,
-        'questions':batch_question_text
+        'questions':batch_question_text,
+        'num_answers':str(len(question_lst))
     }
     prompt = read_prompt('prop_to_entity', field_dict)
     print_msg(prompt)
@@ -106,9 +108,9 @@ def check_prop_to_entity(abstract, table_draft, prop_entity_map):
         row_idx = question_lst[offset]['row_idx']
         table_row = table_draft[row_idx]  
         if answer_text[:4].lower() == 'yes,':
-            table_row['prop->entity'] = 'Y'
+            table_row['entity_matched'] = 'Y(rel IS)'
         elif answer_text[:3].lower() == 'no,':
-            table_row['prop->entity'] = 'N'
+            table_row['entity_matched'] = 'N'
         else:
             raise ValueError(f'Unexpected answer f{answer_text}')
     
