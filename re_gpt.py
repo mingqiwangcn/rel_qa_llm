@@ -85,7 +85,7 @@ def get_1_hop_val_from_prop(abstract, table_draft):
         if prop_name not in prop_dict:
             prop_key = prop_name.lower()
             entity_text = row_item['1_hop_entity_from_prop']
-            question = f'what are the values of {prop_name} of the entity {entity_text} ?'
+            question = f'what are the values for {prop_name} of the entity {entity_text} ?'
             prop_dict[prop_key] = question
     question_lst = []
     prop_lst = []
@@ -102,6 +102,7 @@ def get_1_hop_val_from_prop(abstract, table_draft):
     prompt = read_prompt('get_1_hop_val_from_prop', field_dict) 
     print_msg(prompt)
     response = gpt.chat_complete(prompt)
+    print_msg(response)
     
     field_dict_2 = {
         'passage':response
