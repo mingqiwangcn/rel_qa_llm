@@ -41,11 +41,12 @@ def main():
         
         '''
         #Step 2, Get 1-hop Entity by Property Name
+        
+        '''
         with open('./output/table_draft.json') as f:
             table_draft = json.load(f)
         show_table(table_draft)
-        '''
-        prop_entity_map = property_to_entity(abstract, table_draft)
+        prop_entity_map = get_1_hop_entity_from_prop(abstract, table_draft)
         print_msg(prop_entity_map)
         with open('./output/prop_entity.json', 'w') as f_o:
             f_o.write(json.dumps(prop_entity_map))
@@ -53,14 +54,21 @@ def main():
         '''
         
         #Sep 3, Check row by Property-Entity map
+        '''
         with open('./output/prop_entity.json') as f:
             prop_entity_map = json.load(f)
         show_dict(prop_entity_map)
 
-        check_prop_to_entity(abstract, table_draft, prop_entity_map)
+        check_1_hop_entity_from_prop(abstract, table_draft, prop_entity_map)
 
+        with open('./output/table_draft.json', 'w') as f_o:
+            f_o.write(json.dumps(table_draft))
+        '''
+
+        with open('./output/table_draft.json') as f:
+            table_draft = json.load(f)
         show_table(table_draft)
-
+        get_1_hop_val_from_prop(abstract, table_draft)
 
 def exact_match(text_1, text_lst):
     for text_2 in text_lst:
@@ -69,7 +77,41 @@ def exact_match(text_1, text_lst):
             return True
     return False
 
-def check_prop_to_entity(abstract, table_draft, prop_entity_map):
+def get_1_hop_val_from_prop(abstract, table_draft):
+    prop_dict = {}
+    for idx, row_item in enumerate(table_draft):
+        prop_val = row_item['val']
+        prop_name = row_item['prop']
+        if prop_name not in prop_dict:
+            prop_key = prop_name.lower()
+            entity_text = row_item['1_hop_entity_from_prop']
+            question = f'what are the values of {prop_name} of the entity {entity_text} ?'
+            prop_dict[prop_key] = question
+    question_lst = []
+    prop_lst = []
+    for prop in prop_dict:
+        prop_lst.append(prop)
+        question_lst.append(prop_dict[prop])
+
+    batch_question_text = '\n'.join(question_lst)
+    field_dict = {
+        'passage':abstract,
+        'num_answers':str(len(question_lst)),
+        'questions':batch_question_text
+    }
+    prompt = read_prompt('get_1_hop_val_from_prop', field_dict) 
+    print_msg(prompt)
+    response = gpt.chat_complete(prompt)
+    
+    field_dict_2 = {
+        'passage':response
+    }
+    prompt_2 = read_prompt('extract_number', field_dict_2)
+    print_msg(prompt_2)
+    response_2 = gpt.chat_complete(prompt_2)
+    print_msg(response_2)
+
+def check_1_hop_entity_from_prop(abstract, table_draft, prop_entity_map):
     question_lst = []
     for idx, table_row in enumerate(table_draft):
         prop = table_row['prop']
@@ -99,7 +141,7 @@ def check_prop_to_entity(abstract, table_draft, prop_entity_map):
         'questions':batch_question_text,
         'num_answers':str(len(question_lst))
     }
-    prompt = read_prompt('prop_to_entity', field_dict)
+    prompt = read_prompt('check_1_hop_entity_from_prop', field_dict)
     print_msg(prompt)
     response = gpt.chat_complete(prompt)
     print_msg(response)
@@ -119,7 +161,7 @@ def show_dict(dict_data):
     for key in dict_data:
         print(key, ' | ', '   '.join(dict_data[key]))
 
-def property_to_entity(abstract, row_data):
+def get_1_hop_entity_from_prop(abstract, row_data):
     prop_dict = {}
     for idx, row_item in enumerate(row_data):
         entity = row_item['entity']
@@ -139,7 +181,7 @@ def property_to_entity(abstract, row_data):
         'passage':abstract,
         'questions':batch_question_text
     }
-    entity_prompt = read_prompt('entity', field_dict) 
+    entity_prompt = read_prompt('get_1_hop_entity_from_prop', field_dict) 
     response = gpt.chat_complete(entity_prompt)
     answer_lst = response.split('\n')
     assert (len(prop_lst) == len(answer_lst))
