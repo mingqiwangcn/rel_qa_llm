@@ -1,8 +1,7 @@
 You are given a passage and need to follow the instructions to answer the questions.
 
 Instructions:
-1. You need to output {{num_answers}} answers.
-2. Each answer must be in a new line.
+1. Each answer must be in the format "The values for {propery name} of {entity} is {value with unit}"
 
 Passage:
 {{passage}}
