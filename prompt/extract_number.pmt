@@ -4,14 +4,14 @@ Passages:
 3. weight greater than 60 kg for the group.
 
 Answers:
-entity | property name | property value | minimum value | maximum value | unit of measurement | value category 
-1. A | length | 1.25 | n/a | n/a | cm | exact
-1. B | length | 2.36 | n/a | n/a | cm | exact
-1. C | length | 3.69 | n/a | n/a | cm | exact
-2. B | distance | n/a | 2.6 | 3.2 | miles | between
-2. E | distance | n/a | 2.6 | 3.2 | miles | between
-2. G | distance | n/a | 2.6 | 3.2 | miles | between
-3. group | weight | n/a | 60 | n/a | kg | minimum
+No. | entity | property name | property value | minimum value | maximum value | unit of measurement | value category 
+1 | A | length | 1.25 | n/a | n/a | cm | exact
+1 | B | length | 2.36 | n/a | n/a | cm | exact
+1 | C | length | 3.69 | n/a | n/a | cm | exact
+2 | B | distance | n/a | 2.6 | 3.2 | miles | between
+2 | E | distance | n/a | 2.6 | 3.2 | miles | between
+2 | G | distance | n/a | 2.6 | 3.2 | miles | between
+3 | group | weight | n/a | 60 | n/a | kg | minimum
 
 Passage:
 {{passage}}

@@ -2,7 +2,7 @@ You are given a passage and need to follow the instructions to answer each quest
 
 Instructions:
 1. Each answer must be in the format "The {property name} of {what} is given explicitly as {value with unit} | {evidence sentence}"
-2. Each answer must include {evidence sentence} from the passage.
+2. {evidence sentence} must be from the passage.
 3. {evidence sentence} must be a full and complete sentence.
 
 Passage:

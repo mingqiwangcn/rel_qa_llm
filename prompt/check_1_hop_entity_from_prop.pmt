@@ -1,9 +1,8 @@
 You are given a passage and several questions and need to follow the instructions to answer the questions.
 
 Instructions:
-1. You need to output {{num_answers}} answers.
-2. Each answer must be in a new line.
-3. Each answer must start with "Yes" or "NO" and then explain why.
+1. Each answer must be in the format "{Yes or No}, {evidence sentence}"
+2. {evidence sentence} must be a full sentence from the passage
 
 Passage:
 {{passage}}
@@ -11,4 +10,4 @@ Passage:
 Questions:
 {{questions}}
 
-Answers: 
+Answers:

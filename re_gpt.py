@@ -47,11 +47,12 @@ def main():
         
         #Step 2, Get 1-hop Entity by Property Name
         
+        '''
         prop_entity_map = get_1_hop_entity_from_prop(abstract, table_draft)
-        
-        #with open('./output/1_hop_entity_from_prop.json', 'w') as f_o:
-        #    f_o.write(json.dumps(prop_entity_map))
-        
+        with open('./output/1_hop_entity_from_prop.json', 'w') as f_o:
+            f_o.write(json.dumps(prop_entity_map))
+        '''
+
         #Sep 3, Check row by Property-Entity map
         '''
         with open('./output/1_hop_entity_from_prop.json') as f:
@@ -63,15 +64,13 @@ def main():
         with open('./output/table_draft.json', 'w') as f_o:
             f_o.write(json.dumps(table_draft))
         '''
-
-        '''
         with open('./output/table_draft.json') as f:
             table_draft = json.load(f)
         show_table(table_draft)
+        
         output_1_hop_table = get_1_hop_val_from_prop(abstract, table_draft)
         show_table(output_1_hop_table)
-        '''
-
+        
 def exact_match(text_1, text_lst):
     for text_2 in text_lst:
         matched = (text_1.strip().lower() == text_2.strip().lower())
@@ -82,7 +81,6 @@ def exact_match(text_1, text_lst):
 def get_1_hop_val_from_prop(abstract, table_draft):
     prop_dict = {}
     for idx, row_item in enumerate(table_draft):
-        prop_val = row_item['val']
         prop_name = row_item['prop']
         if prop_name not in prop_dict:
             prop_key = prop_name.lower()
@@ -95,10 +93,9 @@ def get_1_hop_val_from_prop(abstract, table_draft):
         prop_lst.append(prop)
         question_lst.append(prop_dict[prop])
 
-    batch_question_text = '\n'.join(question_lst)
+    batch_question_text = get_numbered_text(question_lst)
     field_dict = {
         'passage':abstract,
-        'num_answers':str(len(question_lst)),
         'questions':batch_question_text
     }
     prompt = read_prompt('get_1_hop_val_from_prop', field_dict)
@@ -107,7 +104,6 @@ def get_1_hop_val_from_prop(abstract, table_draft):
     print_msg(response)
 
     number_passages = response.split('\n')
-    number_passages = [ str(idx+1) + '. ' + a for idx, a in enumerate(number_passages)]
     field_dict_number = {
         'passage':'\n'.join(number_passages)
     }
@@ -119,17 +115,15 @@ def get_1_hop_val_from_prop(abstract, table_draft):
     item_lst = response_number.split('\n')
     for idx in range(1, len(item_lst)):
         row_item = item_lst[idx].split(' | ')
-        entity_with_idx = row_item[0].strip()
-        pos = entity_with_idx.index('.')
-        prop_idx = int(entity_with_idx[:pos]) - 1
+        prop_idx = int(row_item[0].strip()) -1
         out_row = {
-            'entity':row_item[0].strip(),
-            'prop_name':row_item[1].strip(),
-            'prop_value':row_item[2].strip(),
-            'min':row_item[3].strip(),
-            'max':row_item[4].strip(),
-            'unit':row_item[5].strip(),
-            'category':row_item[6].strip()
+            'entity':row_item[1].strip(),
+            'prop_name':row_item[2].strip(),
+            'prop_value':row_item[3].strip(),
+            'min':row_item[4].strip(),
+            'max':row_item[5].strip(),
+            'unit':row_item[6].strip(),
+            'category':row_item[7].strip()
         }
         output_table.append(out_row)
     return output_table
@@ -145,7 +139,8 @@ def check_1_hop_entity_from_prop(abstract, table_draft, prop_entity_map):
             table_row['entity_matched'] = 'Y(EM)'
             print(f'row {idx} is exact match')
         else:
-            question = f'Is {row_entity} {prop_entity_lst[0]}'
+            prop_entity_text = ' or '.join(prop_entity_lst)
+            question = f'{len(question_lst)+1}. Is {row_entity} a {prop_entity_text}'
             for offset in range(1, len(prop_entity_lst)):
                 question += f' or {prop_entity_lst[offset]}'
             question += ' ?'
@@ -162,25 +157,24 @@ def check_1_hop_entity_from_prop(abstract, table_draft, prop_entity_map):
     field_dict = {
         'passage':abstract,
         'questions':batch_question_text,
-        'num_answers':str(len(question_lst))
     }
     prompt = read_prompt('check_1_hop_entity_from_prop', field_dict)
-    print_msg(prompt)
     response = gpt.chat_complete(prompt)
-    print_msg(response)
     answer_lst = response.split('\n')
     for offset, answer_text in enumerate(answer_lst):
         row_idx = question_lst[offset]['row_idx']
-        table_row = table_draft[row_idx]  
-        if answer_text[:4].lower() == 'yes,':
+        table_row = table_draft[row_idx]
+        pos = answer_text.index(',')
+        if answer_text[pos-3:pos].lower() == 'yes':
             table_row['entity_matched'] = 'Y(rel IS)'
-        elif answer_text[:3].lower() == 'no,':
+        elif answer_text[pos-2:pos].lower() == 'no':
             table_row['entity_matched'] = 'N'
         else:
             raise ValueError(f'Unexpected answer f{answer_text}')
     
 def show_dict(dict_data):
     print('_'*100)
+    
     for key in dict_data:
         print(key, ' | ', '   '.join(dict_data[key]))
 
@@ -206,22 +200,51 @@ def get_1_hop_entity_from_prop(abstract, row_data):
         'questions':batch_question_text
     }
     entity_prompt = read_prompt('get_1_hop_entity_from_prop', field_dict) 
-    
-    print_msg(entity_prompt)
     response = gpt.chat_complete(entity_prompt)
-    print_msg(response)
-    return
     answer_lst = response.split('\n')
     assert (len(prop_lst) == len(answer_lst))
-    prop_entity_map = {}
     sep = ' | '
-    for idx, prop_name in enumerate(prop_lst):
-        answer_text = answer_lst[idx]
-        assert(sep in answer_text)
-        prop_entity_text = answer_text.split(sep)[0]
-        prop_entity_lst = get_entity_from_answer(prop_name, prop_entity_text.lower())
-        prop_entity_map[prop_name] = prop_entity_lst
-    return prop_entity_map
+    answer_info_lst = []
+    for idx, answe_text in enumerate(answer_lst):
+        parts = answe_text.split(sep)
+        prop_entity_text = parts[0]
+        evidence_text = parts[1]
+        answer_info = {
+            'prop':prop_lst[idx],
+            'prop_entity':prop_entity_text,
+            'evidence':evidence_text
+        }
+        answer_info_lst.append(answer_info)
+    prop_entity_passage = '\n'.join([a['prop_entity'] for a in answer_info_lst])
+    prop_1_hop_entities = extract_1_hop_entity(prop_entity_passage)
+    assert len(prop_1_hop_entities) == len(answer_info_lst)
+    
+    prop_hop_1_ent_map = {}
+    for idx, answer_info in enumerate(answer_info_lst):
+        prop = answer_info['prop']
+        prop_hop_1_ent_map[prop] = prop_1_hop_entities[idx]
+    return prop_hop_1_ent_map
+
+def get_numbered_text(text_lst):
+    return '\n'.join([str(idx+1) + '. ' + text for idx, text in enumerate(text_lst)])
+
+def extract_1_hop_entity(prop_entity_passage):
+    field_dict = {
+        'passage':prop_entity_passage,
+    }
+    prompt = read_prompt('extract_1_hop_entity', field_dict)
+    response = gpt.chat_complete(prompt)
+    res_line_lst = response.split('\n')
+    SEP = ' | '
+    prop_1_hop_entities = []
+    for res_line in res_line_lst:
+        parts = res_line.split(SEP)
+        if parts[0].strip().lower() == 'no.': # header row
+            continue
+        entity_lst = parts[2].split(' @ ')
+        entity_lst = [a.strip() for a in entity_lst]
+        prop_1_hop_entities.append(entity_lst)
+    return prop_1_hop_entities
 
 def get_entity_from_answer(prop_name, prop_entity_text):
     prop_entity_text = prop_entity_text.replace(prop_name, '')
@@ -232,8 +255,9 @@ def get_entity_from_answer(prop_name, prop_entity_text):
     return entity_lst
 
 def print_msg(msg):
-    print('-'*100)
+    print('-'*60 + 'SEP' + '-'*60)
     print(msg)
+    print('-'*60 + 'SEP' + '-'*60)
 
 def merge_entity_prop_pairs(row_data):
     row_dict = {}
