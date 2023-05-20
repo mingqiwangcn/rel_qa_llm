@@ -5,7 +5,7 @@ import argparse
 import gpt
 import pandas as pd
 
-STOP_WORDS = ['the', 'of', 'a']
+STOP_WORDS = ['the', 'of', 'a', ","]
 
 def read_abstract(args):
     with open(args.abstract_file) as f:
@@ -38,24 +38,23 @@ def main():
         table_draft = get_table_draft(abstract)
         with open('./output/table_draft.json', 'w') as f_o:
             f_o.write(json.dumps(table_draft))
-        
-        '''
-        #Step 2, Get 1-hop Entity by Property Name
-        
+
         '''
         with open('./output/table_draft.json') as f:
             table_draft = json.load(f)
         show_table(table_draft)
-        prop_entity_map = get_1_hop_entity_from_prop(abstract, table_draft)
-        print_msg(prop_entity_map)
-        with open('./output/prop_entity.json', 'w') as f_o:
-            f_o.write(json.dumps(prop_entity_map))
+
         
-        '''
+        #Step 2, Get 1-hop Entity by Property Name
+        
+        prop_entity_map = get_1_hop_entity_from_prop(abstract, table_draft)
+        
+        #with open('./output/1_hop_entity_from_prop.json', 'w') as f_o:
+        #    f_o.write(json.dumps(prop_entity_map))
         
         #Sep 3, Check row by Property-Entity map
         '''
-        with open('./output/prop_entity.json') as f:
+        with open('./output/1_hop_entity_from_prop.json') as f:
             prop_entity_map = json.load(f)
         show_dict(prop_entity_map)
 
@@ -65,10 +64,13 @@ def main():
             f_o.write(json.dumps(table_draft))
         '''
 
+        '''
         with open('./output/table_draft.json') as f:
             table_draft = json.load(f)
         show_table(table_draft)
-        get_1_hop_val_from_prop(abstract, table_draft)
+        output_1_hop_table = get_1_hop_val_from_prop(abstract, table_draft)
+        show_table(output_1_hop_table)
+        '''
 
 def exact_match(text_1, text_lst):
     for text_2 in text_lst:
@@ -99,18 +101,38 @@ def get_1_hop_val_from_prop(abstract, table_draft):
         'num_answers':str(len(question_lst)),
         'questions':batch_question_text
     }
-    prompt = read_prompt('get_1_hop_val_from_prop', field_dict) 
+    prompt = read_prompt('get_1_hop_val_from_prop', field_dict)
     print_msg(prompt)
     response = gpt.chat_complete(prompt)
     print_msg(response)
-    
-    field_dict_2 = {
-        'passage':response
+
+    number_passages = response.split('\n')
+    number_passages = [ str(idx+1) + '. ' + a for idx, a in enumerate(number_passages)]
+    field_dict_number = {
+        'passage':'\n'.join(number_passages)
     }
-    prompt_2 = read_prompt('extract_number', field_dict_2)
-    print_msg(prompt_2)
-    response_2 = gpt.chat_complete(prompt_2)
-    print_msg(response_2)
+    prompt_number = read_prompt('extract_number', field_dict_number)
+    print_msg(prompt_number)
+    response_number = gpt.chat_complete(prompt_number)
+    print_msg(response_number)
+    output_table = []
+    item_lst = response_number.split('\n')
+    for idx in range(1, len(item_lst)):
+        row_item = item_lst[idx].split(' | ')
+        entity_with_idx = row_item[0].strip()
+        pos = entity_with_idx.index('.')
+        prop_idx = int(entity_with_idx[:pos]) - 1
+        out_row = {
+            'entity':row_item[0].strip(),
+            'prop_name':row_item[1].strip(),
+            'prop_value':row_item[2].strip(),
+            'min':row_item[3].strip(),
+            'max':row_item[4].strip(),
+            'unit':row_item[5].strip(),
+            'category':row_item[6].strip()
+        }
+        output_table.append(out_row)
+    return output_table
 
 def check_1_hop_entity_from_prop(abstract, table_draft, prop_entity_map):
     question_lst = []
@@ -169,7 +191,7 @@ def get_1_hop_entity_from_prop(abstract, row_data):
         prop_name = row_item['prop'].strip()
         if prop_name not in prop_dict:
             prop_key = prop_name.lower()
-            question = f'The {prop_name} of what entity is given explicitly?'
+            question = f'The {prop_name} of what is given explicitly?'
             prop_dict[prop_key] = question
     question_lst = []
     prop_lst = []
@@ -177,17 +199,22 @@ def get_1_hop_entity_from_prop(abstract, row_data):
         prop_lst.append(prop)
         question_lst.append(prop_dict[prop])
 
+    question_lst = [str(offset+1) + '. ' + a for offset, a in enumerate(question_lst)]
     batch_question_text = '\n'.join(question_lst)
     field_dict = {
         'passage':abstract,
         'questions':batch_question_text
     }
     entity_prompt = read_prompt('get_1_hop_entity_from_prop', field_dict) 
+    
+    print_msg(entity_prompt)
     response = gpt.chat_complete(entity_prompt)
+    print_msg(response)
+    return
     answer_lst = response.split('\n')
     assert (len(prop_lst) == len(answer_lst))
     prop_entity_map = {}
-    sep = '#@'
+    sep = ' | '
     for idx, prop_name in enumerate(prop_lst):
         answer_text = answer_lst[idx]
         assert(sep in answer_text)
@@ -201,14 +228,14 @@ def get_entity_from_answer(prop_name, prop_entity_text):
     for stop_word in STOP_WORDS:
         prop_entity_text = prop_entity_text.replace(stop_word, '')
     prop_entity_text = prop_entity_text.strip()
-    entity_lst = prop_entity_text.split('|&')
+    entity_lst = prop_entity_text.split('')
     return entity_lst
 
 def print_msg(msg):
     print('-'*100)
     print(msg)
 
-def merge_row_data(row_data):
+def merge_entity_prop_pairs(row_data):
     row_dict = {}
     for item in row_data:
         key = ','.join([a.strip().lower() for a in item])
@@ -236,21 +263,27 @@ def get_table_draft(abstract):
                 'ignore_props':ignore_prop_str,
                 'passage':abstract
             }
-        start_prompt = read_prompt('start_%d' % try_no, field_dict) 
+        prompt_name = ('start_1' if try_no == 1 else 'start_2')
+        
+        start_prompt = read_prompt(prompt_name, field_dict) 
+        print_msg(start_prompt)
+
         response = gpt.chat_complete(start_prompt)
-        table_dict , prop_set = process_response(response)
+
+        print_msg(response)
+
+        table_dict , prop_set = get_entity_prop_pairs(response)
         ignore_prop_set.update(prop_set)
         output_row_data.extend(table_dict['rows'])
     
-    out_table_draft = merge_row_data(output_row_data)
+    out_table_draft = merge_entity_prop_pairs(output_row_data)
     out_table_draft_sorted = sorted(out_table_draft, key=lambda x: x[1])
 
     table_data = []
     for row_item in out_table_draft_sorted:
         table_row = {
             'entity':row_item[0],
-            'prop':row_item[1],
-            'val':row_item[2]
+            'prop':row_item[1]
         }
         table_data.append(table_row)
     return table_data
@@ -260,18 +293,20 @@ def show_table(table_data):
     print('-'*100)
     print(df)
 
-def process_response(response):
+def get_entity_prop_pairs(response):
     lines = response.split('\n')
     table_dict = {'rows':[]}
     prop_set = set()
     for row_text in lines:
         item_eles = row_text.split(gpt.SEP_TOKEN)
-        item_eles = [a.strip() for a in item_eles]
         if len(item_eles) < 3:
             continue
-        table_dict['rows'].append(item_eles)
-        prop = item_eles[1].strip()
-        prop_set.add(prop)
+
+        ent_prop_pair = [item_eles[0].strip(), item_eles[1].strip()]
+        table_dict['rows'].append(ent_prop_pair)
+        prop = ent_prop_pair[1]
+        prop_normed = prop.lower() 
+        prop_set.add(prop_normed)
     return table_dict, prop_set
 
 def get_args():

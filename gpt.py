@@ -1,6 +1,6 @@
 import openai
 
-SEP_TOKEN = '#@'
+SEP_TOKEN = ' | '
 
 def set_key(key):
     openai.api_key = key

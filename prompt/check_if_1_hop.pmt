@@ -1,0 +1,13 @@
+You are given a passage and need to follow the instructions to answer each question
+
+Instructions:
+1. Each answer must start with "Yes" or "No".
+2. Each answer must then explain why.
+
+Passage:
+{{passage}}
+
+Questions:
+{{questions}}
+
+Answers: 

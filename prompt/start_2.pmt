@@ -1,9 +1,9 @@
 You are given a passage and need to follow the instructions to extract information from the passage.
 
 Instructions:
-1. Extract all numeric properties of polymers as tuples with 3 elements {polymer}, {property} and {value with unit}. 
-2. Use "#@" to separate the 3 elements, i.e. output should be in the format "{polymer} #@ {property} #@ {value with unit}"
-3. Ignore these properties, {{ignore_props}} 
+1. Extract all numeric properties of enities as tuples with 3 elements {enity}, {property name} and {value with unit}. 
+2. Use "|" to separate the 3 elements, i.e. output should be in the format "{enity} | {property name} | {value with unit}"
+3. For the output, ignore the property names, {{ignore_props}} 
 
 Passage:
 {{passage}}

@@ -1,17 +1,17 @@
 Passages:
-1.25, 2.36, and 3.69 cm for length of A B C respectively.
-2.6 to 3.2 miles for distance of B, E, and G.
-weight greater than 60 kg for the group.
+1. 1.25, 2.36, and 3.69 cm for length of A B C respectively.
+2. 2.6 to 3.2 miles for distance of B, E, and G.
+3. weight greater than 60 kg for the group.
 
 Answers:
 entity | property name | property value | minimum value | maximum value | unit of measurement | value category 
-A | length | 1.25 | n/a | n/a | cm | exact
-B | length | 2.36 | n/a | n/a | cm | exact
-C | length | 3.69 | n/a | n/a | cm | exact
-B | distance | n/a | 2.6 | 3.2 | miles | between
-E | distance | n/a | 2.6 | 3.2 | miles | between
-G | distance | n/a | 2.6 | 3.2 | miles | between
-group | weight | n/a | 60 | n/a | kg | minimum
+1. A | length | 1.25 | n/a | n/a | cm | exact
+1. B | length | 2.36 | n/a | n/a | cm | exact
+1. C | length | 3.69 | n/a | n/a | cm | exact
+2. B | distance | n/a | 2.6 | 3.2 | miles | between
+2. E | distance | n/a | 2.6 | 3.2 | miles | between
+2. G | distance | n/a | 2.6 | 3.2 | miles | between
+3. group | weight | n/a | 60 | n/a | kg | minimum
 
 Passage:
 {{passage}}
