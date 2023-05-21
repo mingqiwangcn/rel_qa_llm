@@ -189,8 +189,7 @@ def check_1_hop_entity_from_prop(abstract, table_draft, prop_entity_map):
     print_msg(prompt)
     response = gpt.chat_complete(prompt)
     print_msg(response)
-    import pdb; pdb.set_trace()
-
+    
     answer_lst = response.split('\n')
     for offset, answer_text in enumerate(answer_lst):
         row_idx = question_lst[offset]['row_idx']
@@ -200,7 +199,9 @@ def check_1_hop_entity_from_prop(abstract, table_draft, prop_entity_map):
         assert len(number_parts) > 1
 
         if answer_text[pos-3:pos].lower() == 'yes':
-            table_row['entity_matched'] += '|Y(rel IN)'
+            if table_row['entity_matched'] != '':
+                table_row['entity_matched'] += ' , '
+            table_row['entity_matched'] += 'Y(rel IN)'
             if len(number_parts) == 2:
                 table_row['refer_hop_1_entity'] = table_row['1_hop_entity_from_prop']
             else:
@@ -209,10 +210,14 @@ def check_1_hop_entity_from_prop(abstract, table_draft, prop_entity_map):
                 table_row['refer_hop_1_entity'].append(hop_1_entity)
 
         elif answer_text[pos-2:pos].lower() == 'no':
-            table_row['entity_matched'] += '|N'
+            if table_row['entity_matched'] != '':
+                table_row['entity_matched'] += ' , '
+            table_row['entity_matched'] += 'N'
 
         elif answer_text[pos-3:pos].lower() == 'n/a':
-            table_row['entity_matched'] += '|N/A'
+            if table_row['entity_matched'] != '':
+                table_row['entity_matched'] += ' , '
+            table_row['entity_matched'] += 'N/A'
             for hop_1_ent in table_row['1_hop_entity_from_prop']:
                 if table_row['entity'].lower() in hop_1_ent:
                     table_row['refer_hop_1_entity'].append(hop_1_ent)
