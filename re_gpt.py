@@ -38,39 +38,74 @@ def main():
         table_draft = get_table_draft(abstract)
         with open('./output/table_draft.json', 'w') as f_o:
             f_o.write(json.dumps(table_draft))
-
         '''
         with open('./output/table_draft.json') as f:
             table_draft = json.load(f)
         show_table(table_draft)
 
-        
         #Step 2, Get 1-hop Entity by Property Name
         
-        '''
         prop_entity_map = get_1_hop_entity_from_prop(abstract, table_draft)
         with open('./output/1_hop_entity_from_prop.json', 'w') as f_o:
             f_o.write(json.dumps(prop_entity_map))
-        '''
-
-        #Sep 3, Check row by Property-Entity map
-        '''
+        
         with open('./output/1_hop_entity_from_prop.json') as f:
             prop_entity_map = json.load(f)
         show_dict(prop_entity_map)
 
+        #Sep 3, Check row by Property-Entity map
+        
         check_1_hop_entity_from_prop(abstract, table_draft, prop_entity_map)
-
-        with open('./output/table_draft.json', 'w') as f_o:
-            f_o.write(json.dumps(table_draft))
-        '''
-        with open('./output/table_draft.json') as f:
-            table_draft = json.load(f)
         show_table(table_draft)
         
-        output_1_hop_table = get_1_hop_val_from_prop(abstract, table_draft)
-        show_table(output_1_hop_table)
+        hop_1_table = get_1_hop_val_from_prop(abstract, table_draft)
+        show_table(hop_1_table)
+
+        out_table = join_table(table_draft, hop_1_table)
+        show_table(out_table)
+
+def join_table(table_draft, hop_1_table):
+    hop_1_dict = {}
+    for hop_1_row in hop_1_table:
+        key = f"{hop_1_row['entity'].strip()}-{hop_1_row['prop_name'].strip()}"
+        key_normed = key.lower()
+        hop_1_dict[key_normed] = hop_1_row
+    
+    output_table = []
+    filed_names = ['prop_value', 'min', 'max', 'unit', 'category']
+    for table_row in table_draft:
+        entity_matched = table_row['entity_matched'].strip()
+        if entity_matched == 'Y(EM)':
+            key = f"{table_row['entity'].strip()}-{table_row['prop'].strip()}"
+            key_normed = key.lower()
+            matched_hop_1_row = hop_1_dict[key_normed]
+        elif entity_matched == 'Y(rel IN)':
+            key = f"{table_row['1_hop_entity_from_prop'][0].strip()}-{table_row['prop'].strip()}"
+            key_normed = key.lower()
+            matched_hop_1_row = hop_1_dict[key_normed]
+        elif entity_matched == 'N/A':
+            matched_hop_1_row = None
+            
+            for hop_1_ent in table_row['1_hop_entity_from_prop']:
+                if table_row['entity'].lower() in hop_1_ent:
+                    table_row['refer_hop_1_entity'].append(hop_1_ent)
         
+            if len(table_row['refer_hop_1_entity']) == 0:
+                continue
+
+        else:
+            continue
+        
+        out_row = {
+            'entity':table_row['entity'],
+            'prop_name':table_row['prop'],
+        }
+        for field in filed_names:
+            out_row[field] = matched_hop_1_row[field]
+        output_table.append(out_row)
+
+    return output_table
+
 def exact_match(text_1, text_lst):
     for text_2 in text_lst:
         matched = (text_1.strip().lower() == text_2.strip().lower())
@@ -99,18 +134,14 @@ def get_1_hop_val_from_prop(abstract, table_draft):
         'questions':batch_question_text
     }
     prompt = read_prompt('get_1_hop_val_from_prop', field_dict)
-    print_msg(prompt)
     response = gpt.chat_complete(prompt)
-    print_msg(response)
-
+    
     number_passages = response.split('\n')
     field_dict_number = {
         'passage':'\n'.join(number_passages)
     }
     prompt_number = read_prompt('extract_number', field_dict_number)
-    print_msg(prompt_number)
     response_number = gpt.chat_complete(prompt_number)
-    print_msg(response_number)
     output_table = []
     item_lst = response_number.split('\n')
     for idx in range(1, len(item_lst)):
@@ -130,25 +161,33 @@ def get_1_hop_val_from_prop(abstract, table_draft):
 
 def check_1_hop_entity_from_prop(abstract, table_draft, prop_entity_map):
     question_lst = []
+    show_table(table_draft)
     for idx, table_row in enumerate(table_draft):
         prop = table_row['prop']
         prop_entity_lst = prop_entity_map[prop.lower()]
-        table_row['1_hop_entity_from_prop'] = '  '.join(prop_entity_lst)
+        assert len(prop_entity_lst) > 0
+        table_row['1_hop_entity_from_prop'] = prop_entity_lst
         row_entity = table_row['entity']
         if exact_match(row_entity, prop_entity_lst):
             table_row['entity_matched'] = 'Y(EM)'
             print(f'row {idx} is exact match')
         else:
-            prop_entity_text = ' or '.join(prop_entity_lst)
-            question = f'{len(question_lst)+1}. Is {row_entity} a {prop_entity_text}'
-            for offset in range(1, len(prop_entity_lst)):
-                question += f' or {prop_entity_lst[offset]}'
-            question += ' ?'
-            question_info = {
-                'row_idx':idx,
-                'text':question
-            }
-            question_lst.append(question_info)
+            if len(prop_entity_lst) == 1:
+                prop_entity_text = prop_entity_lst[0]
+                question = f'{idx+1}. Does {prop_entity_text} include {row_entity} ?'
+                question_info = {
+                    'row_idx':idx,
+                    'text':question
+                }
+                question_lst.append(question_info)
+            else:
+                for offset, prop_entity in enumerate(prop_entity_lst):
+                    question = f'{idx+1}.{offset+1}. Does {prop_entity} include {row_entity} ?'
+                    question_info = {
+                        'row_idx':idx,
+                        'text':question
+                    }
+                    question_lst.append(question_info)
 
     if len(question_lst) == 0:
         return
@@ -159,16 +198,23 @@ def check_1_hop_entity_from_prop(abstract, table_draft, prop_entity_map):
         'questions':batch_question_text,
     }
     prompt = read_prompt('check_1_hop_entity_from_prop', field_dict)
+    print_msg(prompt)
     response = gpt.chat_complete(prompt)
+    print_msg(response)
+    import pdb; pdb.set_trace()
+
     answer_lst = response.split('\n')
     for offset, answer_text in enumerate(answer_lst):
         row_idx = question_lst[offset]['row_idx']
         table_row = table_draft[row_idx]
         pos = answer_text.index(',')
         if answer_text[pos-3:pos].lower() == 'yes':
-            table_row['entity_matched'] = 'Y(rel IS)'
+            table_row['entity_matched'] = 'Y(rel IN)'
+            
         elif answer_text[pos-2:pos].lower() == 'no':
             table_row['entity_matched'] = 'N'
+        elif answer_text[pos-3:pos].lower() == 'n/a':
+            table_row['entity_matched'] = 'N/A'
         else:
             raise ValueError(f'Unexpected answer f{answer_text}')
     
@@ -176,7 +222,7 @@ def show_dict(dict_data):
     print('_'*100)
     
     for key in dict_data:
-        print(key, ' | ', '   '.join(dict_data[key]))
+        print(key, ' | ', '  #@  '.join(dict_data[key]))
 
 def get_1_hop_entity_from_prop(abstract, row_data):
     prop_dict = {}
@@ -233,7 +279,9 @@ def extract_1_hop_entity(prop_entity_passage):
         'passage':prop_entity_passage,
     }
     prompt = read_prompt('extract_1_hop_entity', field_dict)
+    print_msg(prompt)
     response = gpt.chat_complete(prompt)
+    print_msg(response)
     res_line_lst = response.split('\n')
     SEP = ' | '
     prop_1_hop_entities = []
@@ -245,14 +293,6 @@ def extract_1_hop_entity(prop_entity_passage):
         entity_lst = [a.strip() for a in entity_lst]
         prop_1_hop_entities.append(entity_lst)
     return prop_1_hop_entities
-
-def get_entity_from_answer(prop_name, prop_entity_text):
-    prop_entity_text = prop_entity_text.replace(prop_name, '')
-    for stop_word in STOP_WORDS:
-        prop_entity_text = prop_entity_text.replace(stop_word, '')
-    prop_entity_text = prop_entity_text.strip()
-    entity_lst = prop_entity_text.split('')
-    return entity_lst
 
 def print_msg(msg):
     print('-'*60 + 'SEP' + '-'*60)
@@ -290,12 +330,7 @@ def get_table_draft(abstract):
         prompt_name = ('start_1' if try_no == 1 else 'start_2')
         
         start_prompt = read_prompt(prompt_name, field_dict) 
-        print_msg(start_prompt)
-
-        response = gpt.chat_complete(start_prompt)
-
-        print_msg(response)
-
+        response = gpt.chat_complete(start_prompt, temperature=0.7)
         table_dict , prop_set = get_entity_prop_pairs(response)
         ignore_prop_set.update(prop_set)
         output_row_data.extend(table_dict['rows'])

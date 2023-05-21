@@ -1,11 +1,13 @@
 Passages:
-1. The size of A, B and C is given explicitly as ...
-2. the strength of the solid is given explicitly as ...
+1. The size of A, B and C type is given explicitly as ...
+2. The length of G and F style is given explicitly as ...
+3. the strength of the solid is given explicitly as ...
 
 Answers:
 No. | property name | entity
-1 | size | A @ B @ C 
-2 | strength | solid
+1 | size | A @ B @ C
+2 | length | G @ F
+3 | strength | solid
 
 Passage:
 {{passage}}

@@ -1,3 +1,9 @@
+Follow the instructions and examples to extract table from passages
+
+Instructions:
+1. If a value is changed from val_1 to val_2, use the "exact" value category, and fill val_2 in "property value" column.
+2. If value category is "exact", both "minimum value" and "maximum value" must be "n/a" 
+
 Passages:
 1. 1.25, 2.36, and 3.69 cm for length of A B C respectively.
 2. 2.6 to 3.2 miles for distance of B, E, and G.
