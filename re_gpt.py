@@ -74,44 +74,29 @@ def join_table(table_draft, hop_1_table):
     output_table = []
     filed_names = ['prop_value', 'min', 'max', 'unit', 'category']
     for table_row in table_draft:
-        entity_matched = table_row['entity_matched'].strip()
-        if entity_matched == 'Y(EM)':
-            key = f"{table_row['entity'].strip()}-{table_row['prop'].strip()}"
-            key_normed = key.lower()
-            matched_hop_1_row = hop_1_dict[key_normed]
-        elif entity_matched == 'Y(rel IN)':
-            key = f"{table_row['1_hop_entity_from_prop'][0].strip()}-{table_row['prop'].strip()}"
-            key_normed = key.lower()
-            matched_hop_1_row = hop_1_dict[key_normed]
-        elif entity_matched == 'N/A':
-            matched_hop_1_row = None
-            
-            for hop_1_ent in table_row['1_hop_entity_from_prop']:
-                if table_row['entity'].lower() in hop_1_ent:
-                    table_row['refer_hop_1_entity'].append(hop_1_ent)
-        
-            if len(table_row['refer_hop_1_entity']) == 0:
-                continue
-
-        else:
+        refer_hop_1_entity_lst = table_row['refer_hop_1_entity']
+        if len(refer_hop_1_entity_lst) == 0:
             continue
-        
-        out_row = {
-            'entity':table_row['entity'],
-            'prop_name':table_row['prop'],
-        }
-        for field in filed_names:
-            out_row[field] = matched_hop_1_row[field]
-        output_table.append(out_row)
-
+        for refer_ent in refer_hop_1_entity_lst:
+            key = f"{refer_ent.strip()}-{table_row['prop'].strip()}"
+            key_normed = key.lower()
+            matched_hop_1_row = hop_1_dict[key_normed]
+            out_row = {
+                'entity':table_row['entity'],
+                'prop_name':table_row['prop'],
+                'hop_1_entity':refer_ent,
+            }
+            for field in filed_names:
+                out_row[field] = matched_hop_1_row[field]
+            output_table.append(out_row)
     return output_table
 
 def exact_match(text_1, text_lst):
-    for text_2 in text_lst:
+    for idx, text_2 in enumerate(text_lst):
         matched = (text_1.strip().lower() == text_2.strip().lower())
         if matched:
-            return True
-    return False
+            return True, idx
+    return False, None
 
 def get_1_hop_val_from_prop(abstract, table_draft):
     prop_dict = {}
@@ -161,15 +146,18 @@ def get_1_hop_val_from_prop(abstract, table_draft):
 
 def check_1_hop_entity_from_prop(abstract, table_draft, prop_entity_map):
     question_lst = []
-    show_table(table_draft)
     for idx, table_row in enumerate(table_draft):
         prop = table_row['prop']
         prop_entity_lst = prop_entity_map[prop.lower()]
         assert len(prop_entity_lst) > 0
         table_row['1_hop_entity_from_prop'] = prop_entity_lst
+        table_row['refer_hop_1_entity'] = []
+        table_row['entity_matched'] = ''
         row_entity = table_row['entity']
-        if exact_match(row_entity, prop_entity_lst):
+        em_flag, em_ent_idx = exact_match(row_entity, prop_entity_lst)
+        if em_flag:
             table_row['entity_matched'] = 'Y(EM)'
+            table_row['refer_hop_1_entity'].append(prop_entity_lst[em_ent_idx])
             print(f'row {idx} is exact match')
         else:
             if len(prop_entity_lst) == 1:
@@ -208,13 +196,26 @@ def check_1_hop_entity_from_prop(abstract, table_draft, prop_entity_map):
         row_idx = question_lst[offset]['row_idx']
         table_row = table_draft[row_idx]
         pos = answer_text.index(',')
+        number_parts = answer_text[:pos].split('.')
+        assert len(number_parts) > 1
+
         if answer_text[pos-3:pos].lower() == 'yes':
-            table_row['entity_matched'] = 'Y(rel IN)'
-            
+            table_row['entity_matched'] += '|Y(rel IN)'
+            if len(number_parts) == 2:
+                table_row['refer_hop_1_entity'] = table_row['1_hop_entity_from_prop']
+            else:
+                hop_1_entity_offset = int(number_parts[1]) - 1
+                hop_1_entity = table_row['1_hop_entity_from_prop'][hop_1_entity_offset]
+                table_row['refer_hop_1_entity'].append(hop_1_entity)
+
         elif answer_text[pos-2:pos].lower() == 'no':
-            table_row['entity_matched'] = 'N'
+            table_row['entity_matched'] += '|N'
+
         elif answer_text[pos-3:pos].lower() == 'n/a':
-            table_row['entity_matched'] = 'N/A'
+            table_row['entity_matched'] += '|N/A'
+            for hop_1_ent in table_row['1_hop_entity_from_prop']:
+                if table_row['entity'].lower() in hop_1_ent:
+                    table_row['refer_hop_1_entity'].append(hop_1_ent)
         else:
             raise ValueError(f'Unexpected answer f{answer_text}')
     

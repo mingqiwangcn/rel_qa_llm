@@ -4,7 +4,7 @@ Instructions:
 1. Each answer must be in the format "{short answer}, {evidence sentence}"
 2. {short answer} must be "Yes" or "No".
 3. {evidence sentence} must be a full sentence from the passage
-4. If there is no evidence to say "Yes" or "No", answer "n/a".
+4. If there is no evidence to decide "Yes" or "No", answer "n/a".
 
 Passage:
 {{passage}}
