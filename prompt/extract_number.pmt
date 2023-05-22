@@ -21,7 +21,7 @@ No. | entity | property name | property value | minimum value | maximum value | 
 2 | G | distance | n/a | 2.6 | 3.2 | miles | between
 3 | group | weight | n/a | 60 | n/a | kg | minimum
 4 | A | quantity | 1.6 | n/a | n/a | n/a | exact
-5.| ABC | field size | 5.6 | n/a | n/a | exact
+5 | ABC | field size | 5.6 | n/a | n/a | exact
 
 Passage:
 {{passage}}

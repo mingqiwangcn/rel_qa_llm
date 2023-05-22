@@ -160,22 +160,21 @@ def check_1_hop_entity_from_prop(abstract, table_draft, prop_entity_map):
             table_row['refer_hop_1_entity'].append(prop_entity_lst[em_ent_idx])
             print(f'row {idx} is exact match')
         else:
-            if len(prop_entity_lst) == 1:
-                prop_entity_text = prop_entity_lst[0]
-                question = f'{idx+1}. Does {prop_entity_text} include {row_entity} ?'
+            for offset, prop_entity in enumerate(prop_entity_lst):
+                question = f'{idx+1}.{offset+1}.a. Is {row_entity} a {prop_entity} ?'
                 question_info = {
                     'row_idx':idx,
                     'text':question
                 }
                 question_lst.append(question_info)
-            else:
-                for offset, prop_entity in enumerate(prop_entity_lst):
-                    question = f'{idx+1}.{offset+1}. Does {prop_entity} include {row_entity} ?'
-                    question_info = {
-                        'row_idx':idx,
-                        'text':question
-                    }
-                    question_lst.append(question_info)
+
+                question = f'{idx+1}.{offset+1}.b. Is {row_entity} a component of {prop_entity} ?'
+                question_info = {
+                    'row_idx':idx,
+                    'text':question
+                }
+                question_lst.append(question_info)
+
 
     if len(question_lst) == 0:
         return
@@ -190,6 +189,8 @@ def check_1_hop_entity_from_prop(abstract, table_draft, prop_entity_map):
     response = gpt.chat_complete(prompt)
     print_msg(response)
     
+    import pdb; pdb.set_trace()
+
     answer_lst = response.split('\n')
     for offset, answer_text in enumerate(answer_lst):
         row_idx = question_lst[offset]['row_idx']
