@@ -45,10 +45,12 @@ def main():
 
         #Step 2, Get 1-hop Entity by Property Name
         
+        '''
         prop_entity_map = get_1_hop_entity_from_prop(abstract, table_draft)
         with open('./output/1_hop_entity_from_prop.json', 'w') as f_o:
             f_o.write(json.dumps(prop_entity_map))
-        
+        '''
+
         with open('./output/1_hop_entity_from_prop.json') as f:
             prop_entity_map = json.load(f)
         show_dict(prop_entity_map)
@@ -58,11 +60,13 @@ def main():
         check_1_hop_entity_from_prop(abstract, table_draft, prop_entity_map)
         show_table(table_draft)
         
+        '''
         hop_1_table = get_1_hop_val_from_prop(abstract, table_draft)
         show_table(hop_1_table)
 
         out_table = join_table(table_draft, hop_1_table)
         show_table(out_table)
+        '''
 
 def join_table(table_draft, hop_1_table):
     hop_1_dict = {}
@@ -145,7 +149,6 @@ def get_1_hop_val_from_prop(abstract, table_draft):
     return output_table
 
 def check_1_hop_entity_from_prop(abstract, table_draft, prop_entity_map):
-    question_lst = []
     for idx, table_row in enumerate(table_draft):
         prop = table_row['prop']
         prop_entity_lst = prop_entity_map[prop.lower()]
@@ -161,70 +164,39 @@ def check_1_hop_entity_from_prop(abstract, table_draft, prop_entity_map):
             print(f'row {idx} is exact match')
         else:
             for offset, prop_entity in enumerate(prop_entity_lst):
-                question = f'{idx+1}.{offset+1}.a. Is {row_entity} a {prop_entity} ?'
-                question_info = {
-                    'row_idx':idx,
-                    'text':question
-                }
-                question_lst.append(question_info)
+                check_consistaency(idx, abstract, row_entity, prop_entity)
+                #confirm_consistaency(idx, abstract, row_entity, prop_entity, reason)
 
-                question = f'{idx+1}.{offset+1}.b. Is {row_entity} a component of {prop_entity} ?'
-                question_info = {
-                    'row_idx':idx,
-                    'text':question
-                }
-                question_lst.append(question_info)
-
-
-    if len(question_lst) == 0:
-        return
-    
+def get_consistaency_questions(idx, row_entity, prop_entity):
+    question_lst = []
+    q_id = f'1'
+    question_part_1 = f'{q_id}. Which one of the following claims is true ?'
+    claim_a = f'    A. {row_entity} is another name of {prop_entity} .'
+    claim_b = f'    B. {row_entity} is an instance of {prop_entity}  .'
+    claim_c = f'    C. {row_entity} is an ingredient of {prop_entity}.'
+    claim_d = f'    D. N/A, because there is no evidence in the passage  .'
+    question = '\n'.join([question_part_1, claim_a, claim_b, claim_c, claim_d])
+    question_info = {
+        'q_id':q_id,
+        'row_idx':idx,
+        'text':question
+    }
+    question_lst.append(question_info)
     batch_question_text = '\n'.join([a['text'] for a in question_lst])
+    return batch_question_text
+
+def check_consistaency(idx, abstract, row_entity, prop_entity):
+    batch_question_text = get_consistaency_questions(idx, row_entity, prop_entity)
     field_dict = {
         'passage':abstract,
-        'questions':batch_question_text,
+        'questions':batch_question_text
     }
-    prompt = read_prompt('check_1_hop_entity_from_prop', field_dict)
+    prompt = read_prompt('check_consistency', field_dict)
     print_msg(prompt)
-    response = gpt.chat_complete(prompt)
+    response = gpt.chat_complete(prompt, temperature=0)
     print_msg(response)
-    
-    import pdb; pdb.set_trace()
+    input('\ncontinue  ')
 
-    answer_lst = response.split('\n')
-    for offset, answer_text in enumerate(answer_lst):
-        row_idx = question_lst[offset]['row_idx']
-        table_row = table_draft[row_idx]
-        pos = answer_text.index(',')
-        number_parts = answer_text[:pos].split('.')
-        assert len(number_parts) > 1
-
-        if answer_text[pos-3:pos].lower() == 'yes':
-            if table_row['entity_matched'] != '':
-                table_row['entity_matched'] += ' , '
-            table_row['entity_matched'] += 'Y(rel IN)'
-            if len(number_parts) == 2:
-                table_row['refer_hop_1_entity'] = table_row['1_hop_entity_from_prop']
-            else:
-                hop_1_entity_offset = int(number_parts[1]) - 1
-                hop_1_entity = table_row['1_hop_entity_from_prop'][hop_1_entity_offset]
-                table_row['refer_hop_1_entity'].append(hop_1_entity)
-
-        elif answer_text[pos-2:pos].lower() == 'no':
-            if table_row['entity_matched'] != '':
-                table_row['entity_matched'] += ' , '
-            table_row['entity_matched'] += 'N'
-
-        elif answer_text[pos-3:pos].lower() == 'n/a':
-            if table_row['entity_matched'] != '':
-                table_row['entity_matched'] += ' , '
-            table_row['entity_matched'] += 'N/A'
-            for hop_1_ent in table_row['1_hop_entity_from_prop']:
-                if table_row['entity'].lower() in hop_1_ent:
-                    table_row['refer_hop_1_entity'].append(hop_1_ent)
-        else:
-            raise ValueError(f'Unexpected answer f{answer_text}')
-    
 def show_dict(dict_data):
     print('_'*100)
     

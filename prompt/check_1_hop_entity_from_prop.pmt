@@ -1,9 +1,10 @@
 You are given a passage and several questions and need to follow the instructions to answer the questions.
 
 Instructions:
-1. Each answer must be in the format "{short answer}, {evidence sentence}"
-2. {short answer} must be "Yes" or "No".
-3. {evidence sentence} must be long enough and include the definiton quoted from the passage
+1. Each answer must be in the format "{short answer}, {reason}"
+2. {short answer} must be "Yes" , "No" or "N/A".
+3. {reason} must explain why for the {short answer} .
+4. If there is no {evidence sentence}, {short answer} must be "N/A"
 
 Passage:
 {{passage}}

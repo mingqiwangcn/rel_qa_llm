@@ -5,8 +5,8 @@ Passages:
 
 Answers:
 No. | property name | entity
-1 | size | A @ B @ C
-2 | length | G @ F
+1 | size | A type @ B type @ C type
+2 | length | G style @ F style
 3 | strength | solid
 
 Passage:

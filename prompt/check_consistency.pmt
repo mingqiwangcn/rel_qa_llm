@@ -1,0 +1,15 @@
+You are given a passage and several question and need to follow the instructions to answer the question.
+
+Instructions:
+1. Each answer must contains 3 elements and be in the format "{question number} | {reason}
+2. {answer choice} must be chosen from A, B, C and D based on the passage
+3. {reason} should explain why and end with "Therefore, the answer is {answer choice}".
+
+Passage:
+{{passage}}
+
+Questions:
+{{questions}}
+
+Answers:
+question number | reason
