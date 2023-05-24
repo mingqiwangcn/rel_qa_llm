@@ -3,7 +3,7 @@ You are given a passage and a question with 4 answer choices.
 Instructions:
 1. You should analyze each answer choice
 2. Analysis of each answer choice should end with "So, this choice is {true}/{false}".
-3. You should summarize the output as "So the answer choice is {answer choice}"
+3. The last line of the answer must be "So, the answer choice is {answer choice}"
 
 Passage:
 {{passage}}

@@ -60,13 +60,12 @@ def main():
         check_1_hop_entity_from_prop(abstract, table_draft, prop_entity_map)
         show_table(table_draft)
         
-        '''
         hop_1_table = get_1_hop_val_from_prop(abstract, table_draft)
         show_table(hop_1_table)
 
         out_table = join_table(table_draft, hop_1_table)
         show_table(out_table)
-        '''
+        
 
 def join_table(table_draft, hop_1_table):
     hop_1_dict = {}
@@ -82,6 +81,8 @@ def join_table(table_draft, hop_1_table):
         if len(refer_hop_1_entity_lst) == 0:
             continue
         for refer_ent in refer_hop_1_entity_lst:
+            if refer_ent is None:
+                continue
             key = f"{refer_ent.strip()}-{table_row['prop'].strip()}"
             key_normed = key.lower()
             matched_hop_1_row = hop_1_dict[key_normed]
@@ -94,13 +95,6 @@ def join_table(table_draft, hop_1_table):
                 out_row[field] = matched_hop_1_row[field]
             output_table.append(out_row)
     return output_table
-
-def exact_match(text_1, text_lst):
-    for idx, text_2 in enumerate(text_lst):
-        matched = (text_1.strip().lower() == text_2.strip().lower())
-        if matched:
-            return True, idx
-    return False, None
 
 def get_1_hop_val_from_prop(abstract, table_draft):
     prop_dict = {}
@@ -148,24 +142,48 @@ def get_1_hop_val_from_prop(abstract, table_draft):
         output_table.append(out_row)
     return output_table
 
+def get_entity_set(table_draft):
+    entity_set = set()
+    for table_row in table_draft:
+        row_entity = table_row['entity'].strip().lower()
+        entity_set.add(row_entity)
+    return entity_set
+
 def check_1_hop_entity_from_prop(abstract, table_draft, prop_entity_map):
+    entity_set = get_entity_set(table_draft)
+    max_row_idx = len(table_draft) - 1
     for idx, table_row in enumerate(table_draft):
         prop = table_row['prop']
         prop_entity_lst = prop_entity_map[prop.lower()]
         assert len(prop_entity_lst) > 0
         table_row['1_hop_entity_from_prop'] = prop_entity_lst
+        table_row['entity_matched'] = []
         table_row['refer_hop_1_entity'] = []
-        table_row['entity_matched'] = ''
         row_entity = table_row['entity']
-        em_flag, em_ent_idx = exact_match(row_entity, prop_entity_lst)
-        if em_flag:
-            table_row['entity_matched'] = 'Y(EM)'
-            table_row['refer_hop_1_entity'].append(prop_entity_lst[em_ent_idx])
-            print(f'row {idx} is exact match')
-        else:
-            for offset, prop_entity in enumerate(prop_entity_lst):
-                check_consistaency(idx, abstract, row_entity, prop_entity)
-                #confirm_consistaency(idx, abstract, row_entity, prop_entity, reason)
+        
+        for offset, prop_entity in enumerate(prop_entity_lst):
+            msg = f'{idx}/{max_row_idx} matching {row_entity} and {prop_entity} on {prop}'
+            print(msg)
+            prop_entity_normed = prop_entity.strip().lower()
+            match_type = None
+            refer_entity = None
+            if exact_match(row_entity, prop_entity):
+                match_type = 'EM'
+                refer_entity = prop_entity
+            elif prop_entity_normed in entity_set:
+                match_type = None
+                refer_entity = None
+            else:
+                matched = resolve_entity_refer(idx, abstract, row_entity, prop_entity)
+                if matched:
+                    match_type = 'corefer'
+                    refer_entity = prop_entity
+
+            table_row['entity_matched'].append(match_type)
+            table_row['refer_hop_1_entity'].append(refer_entity)
+            
+def exact_match(text_1, text_2):
+    return text_1.strip().lower() == text_2.strip().lower()
 
 def get_consistaency_questions(idx, row_entity, prop_entity):
     question_lst = []
@@ -182,20 +200,61 @@ def get_consistaency_questions(idx, row_entity, prop_entity):
         'text':question
     }
     question_lst.append(question_info)
-    batch_question_text = '\n'.join([a['text'] for a in question_lst])
-    return batch_question_text
+    return question_lst
 
-def check_consistaency(idx, abstract, row_entity, prop_entity):
-    batch_question_text = get_consistaency_questions(idx, row_entity, prop_entity)
+def resolve_entity_refer(idx, abstract, row_entity, prop_entity):
+    question_lst = get_consistaency_questions(idx, row_entity, prop_entity)
+    assert len(question_lst) == 1
+    batch_question_text = '\n'.join([a['text'] for a in question_lst])
     field_dict = {
         'passage':abstract,
         'questions':batch_question_text
     }
     prompt = read_prompt('check_consistency', field_dict)
+    response = gpt.chat_complete(prompt, temperature=0)
+    choice = get_answer_choice(response, True)
+
+    if choice is None:
+        conclusion = 'So, the answer choice is '
+        part_answer = '\n\n'.join([response, conclusion])
+        choice = complete_answer(abstract, batch_question_text, part_answer)
+        assert choice is not None
+    return choice
+
+def get_answer_choice(response, use_tag):
+    res_lines = response.split('\n')
+    answer_line = res_lines[-1]
+    if use_tag:
+        tag = 'So, the answer choice is '
+        idx = answer_line.find(tag)
+        if idx == -1:
+            return None
+        pos_1 = idx + len(tag)
+        pos_2 = answer_line.index('.', pos_1)
+    else:
+        pos_1 = 0
+        pos_2 = 1
+    choice = answer_line[pos_1:pos_2].strip()
+    if choice in ['A', 'B', 'C']:
+        return True
+    elif choice == 'D':
+        return False
+    else:
+        return None
+
+def complete_answer(passage, question, part_answer):
+    field_dict = {
+        'passage':passage,
+        'questions':question,
+        'answers':part_answer
+    }
+    prompt = read_prompt('answer_complete', field_dict)
+    print_msg('complete answer')
     print_msg(prompt)
     response = gpt.chat_complete(prompt, temperature=0)
     print_msg(response)
-    input('\ncontinue  ')
+    choice = get_answer_choice(response, False)
+    return choice
 
 def show_dict(dict_data):
     print('_'*100)
