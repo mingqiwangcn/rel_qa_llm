@@ -1,9 +1,9 @@
-You are given a passage and several question and need to follow the instructions to answer the question.
+You are given a passage and a question with 4 answer choices.
 
 Instructions:
-1. Each answer must contains 3 elements and be in the format "{question number} | {reason}
-2. {answer choice} must be chosen from A, B, C and D based on the passage
-3. {reason} should explain why and end with "Therefore, the answer is {answer choice}".
+1. You should analyze each answer choice
+2. Analysis of each answer choice should end with "So, this choice is {true}/{false}".
+3. You should summarize the output as "So the answer choice is {answer choice}"
 
 Passage:
 {{passage}}
@@ -11,5 +11,4 @@ Passage:
 Questions:
 {{questions}}
 
-Answers:
-question number | reason
+Answers: Now, let's analyze each answer choice,

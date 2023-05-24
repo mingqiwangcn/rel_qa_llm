@@ -174,7 +174,7 @@ def get_consistaency_questions(idx, row_entity, prop_entity):
     claim_a = f'    A. {row_entity} is another name of {prop_entity} .'
     claim_b = f'    B. {row_entity} is an instance of {prop_entity}  .'
     claim_c = f'    C. {row_entity} is an ingredient of {prop_entity}.'
-    claim_d = f'    D. N/A, because there is no evidence in the passage  .'
+    claim_d = f'    D. All the 3 choices above are false.'
     question = '\n'.join([question_part_1, claim_a, claim_b, claim_c, claim_d])
     question_info = {
         'q_id':q_id,
