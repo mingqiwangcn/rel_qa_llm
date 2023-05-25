@@ -1,10 +1,11 @@
 You are given a passage and need to follow the instructions to extract information from the passage.
 
 Instructions:
-1. Extract all numeric properties of enities as tuples with 3 elements {enity}, {property name} and {value with unit}. 
-2. Use "|" to separate the 3 elements, i.e. output should be in the format "{enity} | {property name} | {value with unit}"
+1. Extract all numeric properties of enities as tuples with 4 elements {entity}, {property name} and {property value} and {unit of value}.
+2. Ignore the rows if {property value} is not a number
 
 Passage:
 {{passage}}
 
 Answer:
+entity | property name | property value | unit of value

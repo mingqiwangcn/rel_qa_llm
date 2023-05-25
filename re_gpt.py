@@ -34,35 +34,35 @@ def main():
     args = get_args()
     for abstract in read_abstract(args):
         # Step 1, Get a start table draft with possibly complete property names
-        '''
+        print('Setp 1, Get polymer and numeric property pairs\n')
         table_draft = get_table_draft(abstract)
         with open('./output/table_draft.json', 'w') as f_o:
             f_o.write(json.dumps(table_draft))
-        '''
+        
         with open('./output/table_draft.json') as f:
             table_draft = json.load(f)
         show_table(table_draft)
 
         #Step 2, Get 1-hop Entity by Property Name
-        
-        '''
+        print('Setp 2, Get 1-hop entity of numeric property\n')
         prop_entity_map = get_1_hop_entity_from_prop(abstract, table_draft)
         with open('./output/1_hop_entity_from_prop.json', 'w') as f_o:
             f_o.write(json.dumps(prop_entity_map))
-        '''
-
+        
         with open('./output/1_hop_entity_from_prop.json') as f:
             prop_entity_map = json.load(f)
         show_dict(prop_entity_map)
 
         #Sep 3, Check row by Property-Entity map
-        
+        print('Setp 3, Resolve coreference (polymer and 1-hop entity)\n')
         check_1_hop_entity_from_prop(abstract, table_draft, prop_entity_map)
         show_table(table_draft)
         
+        print('Setp 4, Get 1-hop property and numbers\n')
         hop_1_table = get_1_hop_val_from_prop(abstract, table_draft)
         show_table(hop_1_table)
 
+        print('Setp 6, Join table\n')
         out_table = join_table(table_draft, hop_1_table)
         show_table(out_table)
         
@@ -213,7 +213,7 @@ def resolve_entity_refer(table_draft, passage, question_lst):
             msg = f"{q_info['row_idx']}/{max_row_idx} matching {q_info['row_entity']} and {q_info['prop_entity']} on {q_info['prop']}"
             msg_lst.append(msg)
         batch_msg = '\n'.join(msg_lst)
-        print(batch_msg)
+        print('\n' + batch_msg)
 
         batch_question_text = '\n\n'.join([a['text'] for a in batch_questions])
         field_dict = {
@@ -349,9 +349,9 @@ def extract_1_hop_entity(prop_entity_passage):
     return prop_1_hop_entities
 
 def print_msg(msg):
-    print('-'*60 + 'SEP' + '-'*60)
+    #print('-'*60 + 'SEP' + '-'*60)
     print(msg)
-    print('-'*60 + 'SEP' + '-'*60)
+    #print('-'*60 + 'SEP' + '-'*60)
 
 def merge_entity_prop_pairs(row_data):
     row_dict = {}
@@ -383,7 +383,7 @@ def get_table_draft(abstract):
             }
         prompt_name = ('start_1' if try_no == 1 else 'start_2')
         
-        start_prompt = read_prompt(prompt_name, field_dict) 
+        start_prompt = read_prompt(prompt_name, field_dict)
         response = gpt.chat_complete(start_prompt, temperature=0.7)
         table_dict , prop_set = get_entity_prop_pairs(response)
         ignore_prop_set.update(prop_set)
@@ -412,9 +412,11 @@ def get_entity_prop_pairs(response):
     prop_set = set()
     for row_text in lines:
         item_eles = row_text.split(gpt.SEP_TOKEN)
-        if len(item_eles) < 3:
+        if len(item_eles) < 4:
             continue
-
+        unit = item_eles[-1].strip().lower()
+        if unit == 'n/a':
+            continue
         ent_prop_pair = [item_eles[0].strip(), item_eles[1].strip()]
         table_dict['rows'].append(ent_prop_pair)
         prop = ent_prop_pair[1]
