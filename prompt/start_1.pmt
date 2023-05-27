@@ -1,8 +1,10 @@
-You are given a passage and need to follow the instructions to extract information from the passage.
+You are given a passage and need to follow the instructions to extract data from the passage.
 
 Instructions:
-1. Extract all numeric properties of enities as tuples with 4 elements {entity}, {property name} and {property value} and {unit of value}.
-2. Ignore the rows if {property value} is not a number
+1. Extract all numeric properties
+2. The outout is a table with 4 columns, "entity", "property name" and "property value" and "unit of value".
+3. Ignore the rows if {property value} is not a number
+{{more_instrs}} 
 
 Passage:
 {{passage}}

@@ -1,12 +1,13 @@
 You are given a passage and need to follow the instructions to extract information from the passage.
 
 Instructions:
-1. Extract all numeric properties of enities as tuples with 4 elements {entity}, {property name} and {property value} and {unit of value}.
-2. Ignore the rows if {property value} is not a number
-3. For the output, ignore the property names, {{ignore_props}} 
+1. Extract all numeric properties of polymers
+2. The outout is a table with 4 columns "polymer name", "property name" and "property value" and "unit of value".
+3. Ignore the rows if {property value} is not a number
+4. For the output, ignore the property names, {{ignore_props}} 
 
 Passage:
 {{passage}}
 
 Answer:
-entity | property name | property value | unit of value
+polymer name | property name | property value | unit of value

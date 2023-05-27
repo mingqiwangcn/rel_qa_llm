@@ -11,6 +11,8 @@ def read_abstract(args):
     with open(args.abstract_file) as f:
         for line in f:
             abstract = line.strip()
+            if abstract.startswith('### '):
+                continue
             yield abstract
 
 def read_prompt(name, field_dict):
@@ -33,6 +35,11 @@ def main():
     gpt.set_key(api_key)
     args = get_args()
     for abstract in read_abstract(args):
+        # Step 1, Get property names
+        get_all_numeric_props(abstract)
+        input("\n continue ")
+        continue
+    
         # Step 1, Get a start table draft with possibly complete property names
         print('Setp 1, Get polymer and numeric property pairs\n')
         table_draft = get_table_draft(abstract)
@@ -42,7 +49,7 @@ def main():
         with open('./output/table_draft.json') as f:
             table_draft = json.load(f)
         show_table(table_draft)
-
+        
         #Step 2, Get 1-hop Entity by Property Name
         print('Setp 2, Get 1-hop entity of numeric property\n')
         prop_entity_map = get_1_hop_entity_from_prop(abstract, table_draft)
@@ -65,7 +72,22 @@ def main():
         print('Setp 6, Join table\n')
         out_table = join_table(table_draft, hop_1_table)
         show_table(out_table)
+
+def get_all_numeric_props(passage):
+    output_table = []
+    field_dict_number = {
+        'passage':passage
+    }
+    prompt = read_prompt('get_prop', field_dict_number)
+    print(prompt)
+    response = gpt.chat_complete(prompt)
+    print(response)
+    res_lines = response.split('\n')
+    for line in res_lines:
+        items = line.split(' | ')
         
+
+
 
 def join_table(table_draft, hop_1_table):
     hop_1_dict = {}
@@ -96,6 +118,30 @@ def join_table(table_draft, hop_1_table):
             output_table.append(out_row)
     return output_table
 
+def get_numeric_detail(passage):
+    output_table = []
+    field_dict_number = {
+        'passage':passage
+    }
+    #To use this propmt, a passage must be generated in the template of few-shot examples in the prompt.
+    prompt_number = read_prompt('extract_number', field_dict_number)
+    response_number = gpt.chat_complete(prompt_number)
+    item_lst = response_number.split('\n')
+    for idx in range(1, len(item_lst)):
+        row_item = item_lst[idx].split(' | ')
+        prop_idx = int(row_item[0].strip()) -1
+        out_row = {
+            'entity':row_item[1].strip(),
+            'prop_name':row_item[2].strip(),
+            'prop_value':row_item[3].strip(),
+            'min':row_item[4].strip(),
+            'max':row_item[5].strip(),
+            'unit':row_item[6].strip(),
+            'category':row_item[7].strip()
+        }
+        output_table.append(out_row)
+    return output_table
+
 def get_1_hop_val_from_prop(abstract, table_draft):
     prop_dict = {}
     for idx, row_item in enumerate(table_draft):
@@ -120,27 +166,11 @@ def get_1_hop_val_from_prop(abstract, table_draft):
     response = gpt.chat_complete(prompt)
     
     number_passages = response.split('\n')
-    field_dict_number = {
-        'passage':'\n'.join(number_passages)
-    }
-    prompt_number = read_prompt('extract_number', field_dict_number)
-    response_number = gpt.chat_complete(prompt_number)
-    output_table = []
-    item_lst = response_number.split('\n')
-    for idx in range(1, len(item_lst)):
-        row_item = item_lst[idx].split(' | ')
-        prop_idx = int(row_item[0].strip()) -1
-        out_row = {
-            'entity':row_item[1].strip(),
-            'prop_name':row_item[2].strip(),
-            'prop_value':row_item[3].strip(),
-            'min':row_item[4].strip(),
-            'max':row_item[5].strip(),
-            'unit':row_item[6].strip(),
-            'category':row_item[7].strip()
-        }
-        output_table.append(out_row)
-    return output_table
+    passage_text = '\n'.join(number_passages)
+    
+    numeric_detail_table = get_numeric_detail(passage_text)
+    return get_numeric_detail
+
 
 def get_entity_set(table_draft):
     entity_set = set()
@@ -187,7 +217,7 @@ def exact_match(text_1, text_2):
 
 def get_corefer_question(idx, q_id, row_entity, prop_entity, prop):
     question_part_1 = f'{q_id}. Which one of the following claims is true ?'
-    claim_a = f'    A. {row_entity} is another name of {prop_entity} .'
+    claim_a = f'    A. {row_entity} is the same as {prop_entity} .'
     claim_b = f'    B. {row_entity} is a {prop_entity}  .'
     claim_c = f'    C. {row_entity} is an ingredient of {prop_entity}.'
     claim_d = f'    D. All the 3 choices above are false.'
@@ -366,25 +396,24 @@ def merge_entity_prop_pairs(row_data):
 def get_table_draft(abstract):  
     output_row_data = [] 
     ignore_prop_set = set()
-    max_num_try = 2
+    max_num_try = 1
     for itr in range(max_num_try):
         try_no = itr + 1
-        if try_no <= 1:
-            field_dict = {
-                'passage':abstract
-            }
-        else:
+        more_instrs = ''
+        if len(ignore_prop_set) > 0:
             ignore_prop_lst = list(ignore_prop_set)
             ignore_prop_lst = ['"' + a + '"' for a in ignore_prop_lst]
             ignore_prop_str = ' , '.join(ignore_prop_lst)
-            field_dict = {
-                'ignore_props':ignore_prop_str,
-                'passage':abstract
-            }
-        prompt_name = ('start_1' if try_no == 1 else 'start_2')
-        
-        start_prompt = read_prompt(prompt_name, field_dict)
-        response = gpt.chat_complete(start_prompt, temperature=0.7)
+            more_instrs = f'4. ignore these property names: {ignore_prop_str}'
+        field_dict = {
+            'passage':abstract,
+            'more_instrs':more_instrs
+        }
+        start_prompt = read_prompt('start_1', field_dict)
+        print(start_prompt)
+        response = gpt.chat_complete(start_prompt, temperature=0)
+        print(response)
+        continue
         table_dict , prop_set = get_entity_prop_pairs(response)
         ignore_prop_set.update(prop_set)
         output_row_data.extend(table_dict['rows'])
@@ -412,12 +441,12 @@ def get_entity_prop_pairs(response):
     prop_set = set()
     for row_text in lines:
         item_eles = row_text.split(gpt.SEP_TOKEN)
-        if len(item_eles) < 4:
+        if len(item_eles) < 5:
             continue
         unit = item_eles[-1].strip().lower()
         if unit == 'n/a':
             continue
-        ent_prop_pair = [item_eles[0].strip(), item_eles[1].strip()]
+        ent_prop_pair = [item_eles[0].strip(), item_eles[2].strip()]
         table_dict['rows'].append(ent_prop_pair)
         prop = ent_prop_pair[1]
         prop_normed = prop.lower() 
