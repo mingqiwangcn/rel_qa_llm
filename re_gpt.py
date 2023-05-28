@@ -27,6 +27,25 @@ def read_prompt(name, field_dict):
         prompt = prompt.replace(place_holder, field_dict[key])
     return prompt 
 
+def print_lst(data):
+    msg = '\n'.join(data)
+    print(msg)
+
+def write_log(idx, data, file_name):
+    data_dir = f'output/{idx+1}'
+    if not os.path.isdir(data_dir):
+        os.makedirs(data_dir)
+    data_file = os.path.join(data_dir, file_name)
+    with open(data_file, 'w') as f_o:
+        json.dump(data, f_o)
+
+def read_log(idx, file_name):
+    data_dir = f'output/{idx+1}'
+    data_file = os.path.join(data_dir, file_name)
+    with open(data_file) as f:
+        data = json.load(f)
+        return data
+
 def main():
     api_key = os.getenv('OPENAI_API_KEY')
     if api_key is None:
@@ -34,32 +53,23 @@ def main():
         return
     gpt.set_key(api_key)
     args = get_args()
-    for abstract in read_abstract(args):
+    for idx, abstract in enumerate(read_abstract(args)):
         # Step 1, Get property names
-        get_all_numeric_props(abstract)
-        input("\n continue ")
-        continue
-    
-        # Step 1, Get a start table draft with possibly complete property names
-        print('Setp 1, Get polymer and numeric property pairs\n')
-        table_draft = get_table_draft(abstract)
-        with open('./output/table_draft.json', 'w') as f_o:
-            f_o.write(json.dumps(table_draft))
-        
-        with open('./output/table_draft.json') as f:
-            table_draft = json.load(f)
-        show_table(table_draft)
+        prop_lst = get_all_numeric_props(abstract)
+        write_log(idx, prop_lst, 'prop.json')
+        prop_lst = read_log(idx, 'prop.json')        
+        print_lst(prop_lst)
         
         #Step 2, Get 1-hop Entity by Property Name
         print('Setp 2, Get 1-hop entity of numeric property\n')
-        prop_entity_map = get_1_hop_entity_from_prop(abstract, table_draft)
-        with open('./output/1_hop_entity_from_prop.json', 'w') as f_o:
-            f_o.write(json.dumps(prop_entity_map))
-        
-        with open('./output/1_hop_entity_from_prop.json') as f:
-            prop_entity_map = json.load(f)
+        prop_entity_map = get_1_hop_entity(abstract, prop_lst)
+        write_log(idx, prop_entity_map, '1_hop_entity.json')
+        prop_entity_map = read_log(idx, '1_hop_entity.json')
         show_dict(prop_entity_map)
-
+        
+        input('\ncontinue ')
+        continue
+        
         #Sep 3, Check row by Property-Entity map
         print('Setp 3, Resolve coreference (polymer and 1-hop entity)\n')
         check_1_hop_entity_from_prop(abstract, table_draft, prop_entity_map)
@@ -73,6 +83,9 @@ def main():
         out_table = join_table(table_draft, hop_1_table)
         show_table(out_table)
 
+def normalize_text(text):
+    return text.strip().lower()
+
 def get_all_numeric_props(passage):
     output_table = []
     field_dict_number = {
@@ -83,11 +96,17 @@ def get_all_numeric_props(passage):
     response = gpt.chat_complete(prompt)
     print(response)
     res_lines = response.split('\n')
+    prop_set = set()
     for line in res_lines:
         items = line.split(' | ')
-        
-
-
+        prop_val = normalize_text(items[3])
+        prop_unit = normalize_text(items[4])
+        if prop_val == 'n/a' or prop_unit == 'n/a':
+            continue
+        prop_name = normalize_text(items[2])
+        prop_set.add(prop_name)
+    prop_list = list(prop_set)
+    return prop_list
 
 def join_table(table_draft, hop_1_table):
     hop_1_dict = {}
@@ -308,29 +327,23 @@ def show_dict(dict_data):
     for key in dict_data:
         print(key, ' | ', '  #@  '.join(dict_data[key]))
 
-def get_1_hop_entity_from_prop(abstract, row_data):
-    prop_dict = {}
-    for idx, row_item in enumerate(row_data):
-        entity = row_item['entity']
-        prop_name = row_item['prop'].strip()
-        if prop_name not in prop_dict:
-            prop_key = prop_name.lower()
-            question = f'The {prop_name} of what is given explicitly?'
-            prop_dict[prop_key] = question
+def get_1_hop_entity(abstract, prop_lst):
     question_lst = []
-    prop_lst = []
-    for prop in prop_dict:
-        prop_lst.append(prop)
-        question_lst.append(prop_dict[prop])
-
-    question_lst = [str(offset+1) + '. ' + a for offset, a in enumerate(question_lst)]
+    for idx, prop_name in enumerate(prop_lst):
+        q_id = idx + 1
+        question = f'{q_id}. The {prop_name} of what is given explicitly?'
+        question_lst.append(question)
+    
     batch_question_text = '\n'.join(question_lst)
     field_dict = {
         'passage':abstract,
         'questions':batch_question_text
     }
+
     entity_prompt = read_prompt('get_1_hop_entity_from_prop', field_dict) 
+    print(entity_prompt)
     response = gpt.chat_complete(entity_prompt)
+    print(response)
     answer_lst = response.split('\n')
     assert (len(prop_lst) == len(answer_lst))
     sep = ' | '
