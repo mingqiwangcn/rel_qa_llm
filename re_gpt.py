@@ -85,6 +85,8 @@ def main():
 
         print(f'Passage {idx+1}. Setp 6, Join table')
         out_table = join_table(polymer_table, hop_1_table)
+        write_log(idx, out_table, 'output_table.json')
+        out_table = read_log(idx, 'output_table.json')
         show_table(out_table)
 
 def get_all_polymers(passage):
