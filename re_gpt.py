@@ -138,9 +138,8 @@ def get_all_numeric_props(passage):
 def join_table(table_draft, hop_1_table):
     hop_1_dict = {}
     for hop_1_row in hop_1_table:
-        key = f"{hop_1_row['entity'].strip()}-{hop_1_row['prop_name'].strip()}"
-        key_normed = key.lower()
-        hop_1_dict[key_normed] = hop_1_row
+        key = f"{hop_1_row['hop_1_entity']}-{hop_1_row['prop_name']}"
+        hop_1_dict[key] = hop_1_row
     
     output_table = []
     filed_names = ['prop_value', 'min', 'max', 'unit', 'category']
@@ -151,9 +150,9 @@ def join_table(table_draft, hop_1_table):
         for refer_ent in refer_hop_1_entity_lst:
             if refer_ent is None:
                 continue
-            key = f"{refer_ent.strip()}-{table_row['prop'].strip()}"
-            key_normed = key.lower()
-            matched_hop_1_row = hop_1_dict[key_normed]
+            refer_ent_normed = normalize_text(refer_ent)
+            key = f"{refer_ent_normed}-{table_row['prop']}"
+            matched_hop_1_row = hop_1_dict[key]
             out_row = {
                 'entity':table_row['entity'],
                 'prop_name':table_row['prop'],
@@ -164,7 +163,7 @@ def join_table(table_draft, hop_1_table):
             output_table.append(out_row)
     return output_table
 
-def get_numeric_detail(passage):
+def get_numeric_detail(passage, question_lst):
     output_table = []
     field_dict_number = {
         'passage':passage
@@ -173,12 +172,14 @@ def get_numeric_detail(passage):
     prompt_number = read_prompt('extract_number', field_dict_number)
     response_number = gpt.chat_complete(prompt_number)
     item_lst = response_number.split('\n')
+    assert len(question_lst) == (len(item_lst) - 1)
     for idx in range(1, len(item_lst)):
         row_item = item_lst[idx].split(' | ')
-        prop_idx = int(row_item[0].strip()) -1
+        q_idx = idx - 1
+        question_info = question_lst[q_idx]
         out_row = {
-            'entity':row_item[1].strip(),
-            'prop_name':row_item[2].strip(),
+            'hop_1_entity':question_info['refer_entity'],
+            'prop_name':question_info['prop'],
             'prop_value':row_item[3].strip(),
             'min':row_item[4].strip(),
             'max':row_item[5].strip(),
@@ -191,22 +192,28 @@ def get_numeric_detail(passage):
         output_table.append(out_row)
     return output_table
 
-def get_1_hop_val_from_prop(abstract, table_draft):
-    prop_dict = {}
-    for idx, row_item in enumerate(table_draft):
-        prop_name = row_item['prop']
-        if prop_name not in prop_dict:
-            prop_key = prop_name.lower()
-            entity_text = row_item['1_hop_entity_from_prop']
-            question = f'what are the values for {prop_name} of the entity {entity_text} ?'
-            prop_dict[prop_key] = question
+def get_1_hop_val_from_prop(abstract, polymer_table):
+    prop_refer_entity_dict = {}
     question_lst = []
-    prop_lst = []
-    for prop in prop_dict:
-        prop_lst.append(prop)
-        question_lst.append(prop_dict[prop])
+    for idx, row_item in enumerate(polymer_table):
+        prop_name = row_item['prop']
+        refer_entity_lst = row_item['refer_hop_1_entity']
+        query_entity_lst = [a for a in refer_entity_lst if a is not None]
+        for query_entity in query_entity_lst:
+            query_entity_normalized = normalize_text(query_entity)
+            key = f'{prop_name}-{query_entity_normalized}'
+            if key not in prop_refer_entity_dict:
+                question = f'what is the value for {prop_name} of the entity {query_entity_normalized} ?'
+                question_info = {
+                    'prop':prop_name,
+                    'refer_entity':query_entity_normalized,
+                    'question':question
+                }
+                question_lst.append(question_info)
+                prop_refer_entity_dict[key] = question_info
 
-    batch_question_text = get_numbered_text(question_lst)
+    question_text_lst = [a['question'] for a in question_lst]
+    batch_question_text = get_numbered_text(question_text_lst)
     field_dict = {
         'passage':abstract,
         'questions':batch_question_text
@@ -217,7 +224,7 @@ def get_1_hop_val_from_prop(abstract, table_draft):
     number_passages = response.split('\n')
     passage_text = '\n'.join(number_passages)
     
-    numeric_detail_table = get_numeric_detail(passage_text)
+    numeric_detail_table = get_numeric_detail(passage_text, question_lst)
     return numeric_detail_table
 
 def get_polymer_props(polymer_data, prop_entity_map):
@@ -305,9 +312,7 @@ def resolve_entity_refer(table_draft, passage, question_lst):
             'questions':batch_question_text
         }
         prompt = read_prompt('check_consistency', field_dict)
-        #print_msg(prompt)
         response = gpt.chat_complete(prompt, temperature=0)
-        #print_msg(response)
         choice_dict = get_answer_choice(response)
         
         for q_info in batch_questions:

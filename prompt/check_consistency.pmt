@@ -4,7 +4,8 @@ Instructions:
 1. Each question has 4 answer choices.
 2. You should analyze each answer choice
 3. Analysis of each answer choice should end with "So, this choice is {true}/{false}".
-4. The last line of the answer of each question must be "So, the answer choice for question {question number} is {answer choice}."
+4. There is only one true choice for each question.
+5. The last line of the answer of each question must be "So, the answer choice for question {question number} is {answer choice}."
 
 Passage:
 {{passage}}
