@@ -63,7 +63,7 @@ def main():
         prop_entity_map = get_1_hop_entity(abstract, prop_lst)
         write_log(idx, prop_entity_map, '1_hop_entity.json')
         prop_entity_map = read_log(idx, '1_hop_entity.json')
-        show_dict(prop_entity_map)
+        #show_dict(prop_entity_map)
         
         print(f'Passage {idx+1}. Step 3, Get all polymers')
         polymer_data = get_all_polymers(abstract)
