@@ -55,26 +55,34 @@ def main():
     args = get_args()
     for idx, abstract in enumerate(read_abstract(args)):
         # Step 1, Get property names
-        prop_lst = get_all_numeric_props(abstract)
-        write_log(idx, prop_lst, 'prop.json')
+        #prop_lst = get_all_numeric_props(abstract)
+        #write_log(idx, prop_lst, 'prop.json')
         prop_lst = read_log(idx, 'prop.json')        
         print_lst(prop_lst)
         
         #Step 2, Get 1-hop Entity by Property Name
-        print('Setp 2, Get 1-hop entity of numeric property\n')
-        prop_entity_map = get_1_hop_entity(abstract, prop_lst)
-        write_log(idx, prop_entity_map, '1_hop_entity.json')
+        #print('Setp 2, Get 1-hop entity of numeric property\n')
+        #prop_entity_map = get_1_hop_entity(abstract, prop_lst)
+        #write_log(idx, prop_entity_map, '1_hop_entity.json')
         prop_entity_map = read_log(idx, '1_hop_entity.json')
         show_dict(prop_entity_map)
         
+        # Step 3, Get all polymers
+        #polymer_data = get_all_polymers(abstract)
+        #write_log(idx, polymer_data, 'polymer.json')
+        polymer_data = read_log(idx, 'polymer.json')
+
+        show_table(polymer_data)
+        
+        # Step 4, Connect Poymer to 1 hop entity of property
+        print('Setp 3, Resolve coreference (polymer and 1-hop entity)\n')
+        connect_polymer_to_1_hop_entity(abstract, polymer_data, prop_entity_map)
+        show_table(polymer_data)
+        
         input('\ncontinue ')
         continue
-        
-        #Sep 3, Check row by Property-Entity map
-        print('Setp 3, Resolve coreference (polymer and 1-hop entity)\n')
-        check_1_hop_entity_from_prop(abstract, table_draft, prop_entity_map)
-        show_table(table_draft)
-        
+
+
         print('Setp 4, Get 1-hop property and numbers\n')
         hop_1_table = get_1_hop_val_from_prop(abstract, table_draft)
         show_table(hop_1_table)
@@ -82,6 +90,27 @@ def main():
         print('Setp 6, Join table\n')
         out_table = join_table(table_draft, hop_1_table)
         show_table(out_table)
+
+def get_all_polymers(passage):
+    field_dict_number = {
+        'passage':passage
+    }
+    prompt = read_prompt('get_polymer', field_dict_number)
+    print(prompt)
+    response = gpt.chat_complete(prompt)
+    print(response)
+    res_lines = response.split('\n')
+    polymer_data = []
+    for line in res_lines:
+        items = line.split(' | ')
+        name = normalize_text(items[2])
+        full_name = normalize_text(items[1])
+        polymer_info = {
+            'entity':name,
+            'full_name':full_name
+        }
+        polymer_data.append(polymer_info)
+    return polymer_data
 
 def normalize_text(text):
     return text.strip().lower()
@@ -190,21 +219,25 @@ def get_1_hop_val_from_prop(abstract, table_draft):
     numeric_detail_table = get_numeric_detail(passage_text)
     return get_numeric_detail
 
+def get_polymer_props(polymer_data, prop_entity_map):
+    out_table = []
+    for polymer_info in polymer_data:
+        for prop in prop_entity_map:
+            out_row = {
+                'entity':polymer_info['entity'],
+                'prop':prop
+            }
+            out_table.append(out_row)
+    return out_table
 
-def get_entity_set(table_draft):
-    entity_set = set()
-    for table_row in table_draft:
-        row_entity = table_row['entity'].strip().lower()
-        entity_set.add(row_entity)
-    return entity_set
-
-def check_1_hop_entity_from_prop(abstract, table_draft, prop_entity_map):
-    entity_set = get_entity_set(table_draft)
+def connect_polymer_to_1_hop_entity (abstract, polymer_lst, prop_entity_map):
+    entity_set = set([a['entity'] for a in polymer_lst])
     question_lst = []
     q_id = 0
-    for idx, table_row in enumerate(table_draft):
+    polymer_table = get_polymer_props(polymer_lst, prop_entity_map)
+    for idx, table_row in enumerate(polymer_table):
         prop = table_row['prop']
-        prop_entity_lst = prop_entity_map[prop.lower()]
+        prop_entity_lst = prop_entity_map[prop]
         assert len(prop_entity_lst) > 0
         table_row['1_hop_entity_from_prop'] = prop_entity_lst
         table_row['entity_matched'] = []
@@ -229,7 +262,7 @@ def check_1_hop_entity_from_prop(abstract, table_draft, prop_entity_map):
                 question_lst.append(q_info)
 
     if len(question_lst) > 0:
-        resolve_entity_refer(table_draft, abstract, question_lst)    
+        resolve_entity_refer(polymer_table, abstract, question_lst)    
             
 def exact_match(text_1, text_2):
     return text_1.strip().lower() == text_2.strip().lower()
