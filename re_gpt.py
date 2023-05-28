@@ -71,7 +71,7 @@ def main():
         polymer_lst = read_log(idx, 'polymer.json')
         #show_table(polymer_lst)
     
-        print(f'Passage {idx+1}. Step 4, Connect poymer to 1 hop entity of property')
+        print(f'Passage {idx+1}. Step 4, Connect poymer to 1-hop entity of property')
         polymer_table = connect_polymer_to_1_hop_entity(abstract, polymer_lst, prop_entity_map)
         write_log(idx, polymer_table, 'polymer_table.json')
         polymer_table = read_log(idx, 'polymer_table.json')
