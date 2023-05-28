@@ -63,7 +63,7 @@ def main():
         prop_entity_map = get_1_hop_entity(abstract, prop_lst)
         write_log(idx, prop_entity_map, '1_hop_entity.json')
         prop_entity_map = read_log(idx, '1_hop_entity.json')
-        #show_dict(prop_entity_map)
+        show_dict(prop_entity_map)
         
         print(f'Passage {idx+1}. Step 3, Get all polymers')
         polymer_data = get_all_polymers(abstract)
@@ -382,7 +382,6 @@ def get_1_hop_entity(abstract, prop_lst):
     entity_prompt = read_prompt('get_1_hop_entity_from_prop', field_dict) 
     #print(entity_prompt)
     response = gpt.chat_complete(entity_prompt)
-    #print(response)
     answer_lst = response.split('\n')
     assert (len(prop_lst) == len(answer_lst))
     sep = ' | '
@@ -405,6 +404,7 @@ def get_1_hop_entity(abstract, prop_lst):
     for idx, answer_info in enumerate(answer_info_lst):
         prop = answer_info['prop']
         prop_hop_1_ent_map[prop] = prop_1_hop_entities[idx]
+            
     return prop_hop_1_ent_map
 
 def get_numbered_text(text_lst):
