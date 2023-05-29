@@ -3,6 +3,7 @@ You are given a passage and need to follow the instructions to answer question.
 Instructions:
 1. The output is a table with 3 columns "row number" , "polymer full name" and "polymer short name" .
 2. Each row contains one polymer .
+3. {short name} is "N/A" if there is no short name for a polymer.
 
 Passage:
 {{passage}}

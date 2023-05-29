@@ -54,23 +54,26 @@ def main():
     gpt.set_key(api_key)
     args = get_args()
     for idx, abstract in enumerate(read_abstract(args)):
-        print(f'Passage {idx+1}. Step 1, Get property names')
+        print(f'Passage {idx+1}. Step 1, Get all polymers')
+        polymer_data = get_all_polymers(abstract)
+        write_log(idx, polymer_data, 'polymer.json')
+        polymer_lst = read_log(idx, 'polymer.json')
+        show_table(polymer_lst)
+        if len(polymer_lst) == 0:
+            print(f'There is no polymers for passage {idx+1}')
+            return
+        
+        print(f'Passage {idx+1}. Step 2, Get property names')
         prop_lst = get_all_numeric_props(abstract)
         write_log(idx, prop_lst, 'prop.json')
         prop_lst = read_log(idx, 'prop.json')        
         
-        print(f'Passage {idx+1}. Step 2, Get 1-hop entity by property name')
+        print(f'Passage {idx+1}. Step 3, Get 1-hop entity by property name')
         prop_entity_map = get_1_hop_entity(abstract, prop_lst)
         write_log(idx, prop_entity_map, '1_hop_entity.json')
         prop_entity_map = read_log(idx, '1_hop_entity.json')
         #show_dict(prop_entity_map)
         
-        print(f'Passage {idx+1}. Step 3, Get all polymers')
-        polymer_data = get_all_polymers(abstract)
-        write_log(idx, polymer_data, 'polymer.json')
-        polymer_lst = read_log(idx, 'polymer.json')
-        #show_table(polymer_lst)
-    
         print(f'Passage {idx+1}. Step 4, Connect poymer to 1-hop entity of property')
         polymer_table = connect_polymer_to_1_hop_entity(abstract, polymer_lst, prop_entity_map)
         write_log(idx, polymer_table, 'polymer_table.json')
@@ -79,6 +82,7 @@ def main():
         
         print(f'Passage {idx+1}. Setp 5, Get 1-hop property and numbers')
         hop_1_table = get_1_hop_val_from_prop(abstract, polymer_table)
+        
         write_log(idx, hop_1_table, '1_hop_table.json')
         hop_1_table = read_log(idx, '1_hop_table.json')
         #show_table(hop_1_table)
@@ -96,13 +100,15 @@ def get_all_polymers(passage):
     prompt = read_prompt('get_polymer', field_dict_number)
     #print(prompt)
     response = gpt.chat_complete(prompt)
-    #print(response)
+    print(response)
     res_lines = response.split('\n')
     polymer_data = []
     for line in res_lines:
         items = line.split(' | ')
         name = normalize_text(items[2])
         full_name = normalize_text(items[1])
+        if name == 'n/a':
+            name = full_name
         polymer_info = {
             'entity':name,
             'full_name':full_name
@@ -152,6 +158,8 @@ def join_table(table_draft, hop_1_table):
                 continue
             refer_ent_normed = normalize_text(refer_ent)
             key = f"{refer_ent_normed}-{table_row['prop']}"
+            if key not in hop_1_dict:
+                continue
             matched_hop_1_row = hop_1_dict[key]
             out_row = {
                 'entity':table_row['entity'],
@@ -172,11 +180,12 @@ def get_numeric_detail(passage, question_lst):
     prompt_number = read_prompt('extract_number', field_dict_number)
     response_number = gpt.chat_complete(prompt_number)
     item_lst = response_number.split('\n')
-    assert len(question_lst) == (len(item_lst) - 1)
     for idx in range(1, len(item_lst)):
         row_item = item_lst[idx].split(' | ')
-        q_idx = idx - 1
+        q_idx = int(row_item[0].strip()) -1
         question_info = question_lst[q_idx]
+        if question_info['prop'] != row_item[2].strip().lower():
+            continue
         out_row = {
             'hop_1_entity':question_info['refer_entity'],
             'prop_name':question_info['prop'],
@@ -212,6 +221,8 @@ def get_1_hop_val_from_prop(abstract, polymer_table):
                 question_lst.append(question_info)
                 prop_refer_entity_dict[key] = question_info
 
+    if len(question_lst) == 0:
+        return []
     question_text_lst = [a['question'] for a in question_lst]
     batch_question_text = get_numbered_text(question_text_lst)
     field_dict = {
@@ -223,7 +234,7 @@ def get_1_hop_val_from_prop(abstract, polymer_table):
     
     number_passages = response.split('\n')
     passage_text = '\n'.join(number_passages)
-    
+
     numeric_detail_table = get_numeric_detail(passage_text, question_lst)
     return numeric_detail_table
 
@@ -445,6 +456,8 @@ def merge_entity_prop_pairs(row_data):
     return out_row_data
 
 def show_table(table_data):
+    pd.set_option('display.max_colwidth', 100)
+    pd.set_option('display.max_columns', 100)
     df = pd.DataFrame(table_data)
     print('-'*100)
     print(df)
