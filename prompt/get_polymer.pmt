@@ -10,6 +10,7 @@ Answer the question in the format:
 '''
 Let's think step by step:
 {reasoning steps}
-Therefore, the answer is a table with each row containing one polymer:
+Therefore, the answer is the table:
 full name | short name
+If {short name} contains multiple polymers, separate them with " #@ "
 '''

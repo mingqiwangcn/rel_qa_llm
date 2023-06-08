@@ -34,25 +34,21 @@ def print_lst(data):
     
     print('-'*100)
 
-def write_log(args, idx, data, file_name):
-    data_dir = f'{args.out_dir}/passage_{idx+1}'
-    if not os.path.isdir(data_dir):
-        os.makedirs(data_dir)
-    data_file = os.path.join(data_dir, file_name)
+def write_log(log_dir, data, file_name):
+    data_file = os.path.join(log_dir, file_name)
     with open(data_file, 'w') as f_o:
         json.dump(data, f_o)
 
-def read_log(args, idx, file_name):
-    data_dir = f'{args.out_dir}/passage_{idx+1}'
-    data_file = os.path.join(data_dir, file_name)
+def read_log(log_dir, file_name):
+    data_file = os.path.join(log_dir, file_name)
     with open(data_file) as f:
         data = json.load(f)
         return data
 
-def set_gpt_logger(args):
+def set_gpt_logger(log_dir):
     cur_time = datetime.datetime.now()
     time_str = cur_time.strftime("%Y_%m_%d_%H_%M_%S")
-    log_file = f'{args.out_dir}/gtp_log_{time_str}.txt'
+    log_file = f'{log_dir}/gtp_log_{time_str}.txt'
     f_log = open(log_file, 'w')
     gpt.set_logger(f_log)
     return f_log  
@@ -64,16 +60,20 @@ def main():
         return
     gpt.set_key(api_key)
     args = get_args()
-    f_gpt_log = set_gpt_logger(args)
 
     for idx, abstract in enumerate(read_abstract(args)):
         if abstract is None:
             continue
+        data_dir = f'{args.out_dir}/passage_{idx+1}'
+        if not os.path.isdir(data_dir):
+            os.makedirs(data_dir)
+
+        f_gpt_log = set_gpt_logger(data_dir)
         t1 = time.time()
         print(f'Passage {idx+1}. Step 1, Get all polymers')
         polymer_lst = get_all_polymers(abstract)
-        write_log(args, idx, polymer_lst, 'polymer.json')
-        polymer_lst = read_log(args, idx, 'polymer.json')
+        write_log(data_dir, polymer_lst, 'polymer.json')
+        polymer_lst = read_log(data_dir, 'polymer.json')
         show_table(polymer_lst)
         if len(polymer_lst) == 0:
             print(f'There is no polymers for passage {idx+1}')
@@ -81,38 +81,39 @@ def main():
         
         print(f'Passage {idx+1}. Step 2, Get property names')
         prop_lst = get_all_numeric_props(abstract)
-        write_log(args, idx, prop_lst, 'prop.json')
-        prop_lst = read_log(args, idx, 'prop.json')
+        write_log(data_dir, prop_lst, 'prop.json')
+        prop_lst = read_log(data_dir, 'prop.json')
         print_lst(prop_lst)
         
         print(f'Passage {idx+1}. Step 3, Get 1-hop entity by property name')
         prop_entity_map = get_1_hop_entity(abstract, prop_lst)
-        write_log(args, idx, prop_entity_map, '1_hop_entity.json')
-        prop_entity_map = read_log(args, idx, '1_hop_entity.json')
+        write_log(data_dir, prop_entity_map, '1_hop_entity.json')
+        prop_entity_map = read_log(data_dir, '1_hop_entity.json')
         show_dict(prop_entity_map)
         
         print(f'Passage {idx+1}. Step 4, Connect poymer to 1-hop entity of property')
         polymer_table = connect_polymer_to_1_hop_entity(abstract, polymer_lst, prop_entity_map)
-        write_log(args, idx, polymer_table, 'polymer_table.json')
-        polymer_table = read_log(args, idx, 'polymer_table.json')
+        write_log(data_dir, polymer_table, 'polymer_table.json')
+        polymer_table = read_log(data_dir, 'polymer_table.json')
         show_table(polymer_table)
         
         print(f'Passage {idx+1}. Setp 5, Get 1-hop property and numbers')
         hop_1_table = get_1_hop_val_from_prop(abstract, polymer_table)
         
         write_log(args, idx, hop_1_table, '1_hop_table.json')
-        hop_1_table = read_log(args, idx, '1_hop_table.json')
+        hop_1_table = read_log(data_dir, '1_hop_table.json')
         show_table(hop_1_table)
 
         print(f'Passage {idx+1}. Setp 6, Join table')
         out_table = join_table(polymer_table, hop_1_table)
-        write_log(args, idx, out_table, 'output_table.json')
-        out_table = read_log(args, idx, 'output_table.json')
+        write_log(data_dir, out_table, 'output_table.json')
+        out_table = read_log(data_dir, 'output_table.json')
         show_table(out_table)
         t2 = time.time()
         print('time spent (seconds) : %d' %(t2-t1))
 
-    f_gpt_log.close()
+        f_gpt_log.close()
+        
 
 def get_all_polymers(passage):
     field_dict_number = {
@@ -129,14 +130,16 @@ def get_all_polymers(passage):
             continue
         if line.startswith('full name | short name'):
             continue
-        name = normalize_text(items[1])
+        name_text = normalize_text(items[1])
         full_name = normalize_text(items[0])
-        assert name != 'n/a'
-        polymer_info = {
-            'entity':name,
-            'full_name':full_name
-        }
-        polymer_data.append(polymer_info)
+        assert name_text != 'n/a'
+        name_lst = name_text.split('#@')
+        for name in name_lst:
+            polymer_info = {
+                'entity':normalize_text(name),
+                'full_name':full_name
+            }
+            polymer_data.append(polymer_info)
     return polymer_data
 
 def normalize_text(text):
