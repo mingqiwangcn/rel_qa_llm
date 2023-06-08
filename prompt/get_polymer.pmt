@@ -1,9 +1,4 @@
-You are given a passage and need to follow the instructions to answer question.
-
-Instructions:
-1. The output is a table with 3 columns "row number" , "polymer full name" and "polymer short name" .
-2. Each row contains one polymer .
-3. {short name} is "N/A" if there is no short name for a polymer.
+You are given a passage and need to answer a question.
 
 Passage:
 {{passage}}
@@ -11,5 +6,10 @@ Passage:
 Question:
 What are the polymers ?
 
-Answer:
-row number | polymer full name | polymer short name
+Answer the question in the format:
+'''
+Let's think step by step:
+{reasoning steps}
+Therefore, the answer is a table with each row containing one polymer:
+full name | short name
+'''

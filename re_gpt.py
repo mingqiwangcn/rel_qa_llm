@@ -116,10 +116,13 @@ def get_all_polymers(passage):
     polymer_data = []
     for line in res_lines:
         items = line.split(' | ')
-        name = normalize_text(items[2])
-        full_name = normalize_text(items[1])
-        if name == 'n/a':
-            name = full_name
+        if len(items) < 2:
+            continue
+        if line.startswith('full name | short name'):
+            continue
+        name = normalize_text(items[1])
+        full_name = normalize_text(items[0])
+        assert name != 'n/a'
         polymer_info = {
             'entity':name,
             'full_name':full_name
@@ -467,7 +470,7 @@ def merge_entity_prop_pairs(row_data):
     return out_row_data
 
 def show_table(table_data):
-    pd.set_option('display.max_colwidth', 100)
+    pd.set_option('display.max_colwidth', 20)
     pd.set_option('display.max_columns', 100)
     df = pd.DataFrame(table_data)
     print('-'*100)
