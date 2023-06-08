@@ -6,13 +6,12 @@ import argparse
 import gpt
 import pandas as pd
 
-
 def read_abstract(args):
     with open(args.abstract_file) as f:
         for line in f:
             abstract = line.strip()
             if abstract.startswith('### '):
-                continue
+                abstract = None
             yield abstract
 
 def read_prompt(name, field_dict):
@@ -28,8 +27,12 @@ def read_prompt(name, field_dict):
     return prompt 
 
 def print_lst(data):
+    print('-'*100)
+    
     msg = '\n'.join(data)
     print(msg)
+    
+    print('-'*100)
 
 def write_log(args, idx, data, file_name):
     data_dir = f'{args.out_dir}/passage_{idx+1}'
@@ -64,9 +67,12 @@ def main():
     f_gpt_log = set_gpt_logger(args)
 
     for idx, abstract in enumerate(read_abstract(args)):
+        if abstract is None:
+            continue
+        t1 = time.time()
         print(f'Passage {idx+1}. Step 1, Get all polymers')
-        polymer_data = get_all_polymers(abstract)
-        write_log(args, idx, polymer_data, 'polymer.json')
+        polymer_lst = get_all_polymers(abstract)
+        write_log(args, idx, polymer_lst, 'polymer.json')
         polymer_lst = read_log(args, idx, 'polymer.json')
         show_table(polymer_lst)
         if len(polymer_lst) == 0:
@@ -76,32 +82,35 @@ def main():
         print(f'Passage {idx+1}. Step 2, Get property names')
         prop_lst = get_all_numeric_props(abstract)
         write_log(args, idx, prop_lst, 'prop.json')
-        prop_lst = read_log(args, idx, 'prop.json')        
+        prop_lst = read_log(args, idx, 'prop.json')
+        print_lst(prop_lst)
         
         print(f'Passage {idx+1}. Step 3, Get 1-hop entity by property name')
         prop_entity_map = get_1_hop_entity(abstract, prop_lst)
         write_log(args, idx, prop_entity_map, '1_hop_entity.json')
         prop_entity_map = read_log(args, idx, '1_hop_entity.json')
-        #show_dict(prop_entity_map)
+        show_dict(prop_entity_map)
         
         print(f'Passage {idx+1}. Step 4, Connect poymer to 1-hop entity of property')
         polymer_table = connect_polymer_to_1_hop_entity(abstract, polymer_lst, prop_entity_map)
         write_log(args, idx, polymer_table, 'polymer_table.json')
         polymer_table = read_log(args, idx, 'polymer_table.json')
-        #show_table(polymer_table)
+        show_table(polymer_table)
         
         print(f'Passage {idx+1}. Setp 5, Get 1-hop property and numbers')
         hop_1_table = get_1_hop_val_from_prop(abstract, polymer_table)
         
         write_log(args, idx, hop_1_table, '1_hop_table.json')
         hop_1_table = read_log(args, idx, '1_hop_table.json')
-        #show_table(hop_1_table)
+        show_table(hop_1_table)
 
         print(f'Passage {idx+1}. Setp 6, Join table')
         out_table = join_table(polymer_table, hop_1_table)
         write_log(args, idx, out_table, 'output_table.json')
         out_table = read_log(args, idx, 'output_table.json')
         show_table(out_table)
+        t2 = time.time()
+        print('time spent (seconds) : %d' %(t2-t1))
 
     f_gpt_log.close()
 
@@ -198,8 +207,8 @@ def get_numeric_detail(passage, question_lst):
         row_item = item_lst[idx].split(' | ')
         q_idx = int(row_item[0].strip()) -1
         question_info = question_lst[q_idx]
-        if question_info['prop'] != row_item[2].strip().lower():
-            continue
+        #if question_info['prop'] != row_item[2].strip().lower():
+        #    continue
         out_row = {
             'hop_1_entity':question_info['refer_entity'],
             'prop_name':question_info['prop'],
@@ -386,10 +395,12 @@ def complete_answer(passage, question, part_answer):
     return choice_dict
 
 def show_dict(dict_data):
-    print('_'*100)
+    print('-'*100)
     
     for key in dict_data:
         print(key, ' | ', '  #@  '.join(dict_data[key]))
+
+    print('-'*100)
 
 def get_1_hop_entity(abstract, prop_lst):
     question_lst = []
