@@ -116,14 +116,37 @@ def main():
         
 
 def get_all_polymers(passage):
+    print('first try')
+    question = 'What are the polymers ?'
+    polymer_lst = get_polymers(passage, question)
+    show_table(polymer_lst)
+    if len(polymer_lst) > 0:
+        print('second try')
+        polymer_names = ' , '.join([a['surface_form'] for a in polymer_lst])
+        question_other = f'What are the polymers other than {polymer_names} ?'
+        polymer_other_lst = get_polymers(passage, question_other)
+        if len(polymer_other_lst) > 0:
+            polymer_dict = {}
+            for polymer in polymer_lst:
+                polymer_dict[polymer['entity']] = polymer
+            for polymer_other in polymer_other_lst:
+                if polymer_other['entity'] not in polymer_dict:
+                    print('get more polymers')
+                    polymer_lst.append(polymer_other)
+        else:
+            print('no more polymers')
+    return polymer_lst
+
+def get_polymers(passage, question):
     field_dict_number = {
-        'passage':passage
+        'passage':passage,
+        'question':question
     }
     prompt = read_prompt('get_polymer', field_dict_number)
     #print(prompt)
     response = gpt.chat_complete(prompt)
     res_lines = response.split('\n')
-    polymer_data = []
+    polymer_lst = []
     for line in res_lines:
         items = line.split(' | ')
         if len(items) < 2:
@@ -132,6 +155,8 @@ def get_all_polymers(passage):
             continue
         name_text = items[1].strip()
         full_name = items[0].strip()
+        if name_text == '---' and full_name == '---':
+            continue
         assert normalize_text(name_text) != 'n/a'
         name_lst = name_text.split('#@')
         for name in name_lst:
@@ -140,8 +165,8 @@ def get_all_polymers(passage):
                 'surface_form':name.strip(),
                 'full_name':full_name,
             }
-            polymer_data.append(polymer_info)
-    return polymer_data
+            polymer_lst.append(polymer_info)
+    return polymer_lst
 
 def normalize_text(text):
     return text.strip().lower()

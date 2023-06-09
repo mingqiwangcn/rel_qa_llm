@@ -4,7 +4,7 @@ Passage:
 {{passage}}
 
 Question:
-What are the polymers ?
+{{question}}
 
 Answer the question in the format:
 '''
