@@ -130,14 +130,15 @@ def get_all_polymers(passage):
             continue
         if line.startswith('full name | short name'):
             continue
-        name_text = normalize_text(items[1])
-        full_name = normalize_text(items[0])
-        assert name_text != 'n/a'
+        name_text = items[1].strip()
+        full_name = items[0].strip()
+        assert normalize_text(name_text) != 'n/a'
         name_lst = name_text.split('#@')
         for name in name_lst:
             polymer_info = {
                 'entity':normalize_text(name),
-                'full_name':full_name
+                'surface_form':name.strip(),
+                'full_name':full_name,
             }
             polymer_data.append(polymer_info)
     return polymer_data
@@ -188,7 +189,7 @@ def join_table(table_draft, hop_1_table):
                 continue
             matched_hop_1_row = hop_1_dict[key]
             out_row = {
-                'entity':table_row['entity'],
+                'entity':table_row['surface_form'],
                 'prop_name':table_row['prop'],
                 'hop_1_entity':refer_ent,
             }
@@ -232,13 +233,14 @@ def get_1_hop_val_from_prop(abstract, polymer_table):
     question_lst = []
     for idx, row_item in enumerate(polymer_table):
         prop_name = row_item['prop']
+        prop_name_normalized = normalize_text(prop_name)
         refer_entity_lst = row_item['refer_hop_1_entity']
         query_entity_lst = [a for a in refer_entity_lst if a is not None]
         for query_entity in query_entity_lst:
             query_entity_normalized = normalize_text(query_entity)
-            key = f'{prop_name}-{query_entity_normalized}'
+            key = f'{prop_name_normalized}-{query_entity_normalized}'
             if key not in prop_refer_entity_dict:
-                question = f'what is the value for {prop_name} of the entity {query_entity_normalized} ?'
+                question = f'what is the value for {prop_name} of the entity {query_entity} ?'
                 question_info = {
                     'prop':prop_name,
                     'refer_entity':query_entity_normalized,
@@ -270,6 +272,7 @@ def get_polymer_props(polymer_data, prop_entity_map):
         for prop in prop_entity_map:
             out_row = {
                 'entity':polymer_info['entity'],
+                'surface_form':polymer_info['surface_form'],
                 'prop':prop
             }
             out_table.append(out_row)
@@ -288,6 +291,7 @@ def connect_polymer_to_1_hop_entity (abstract, polymer_lst, prop_entity_map):
         table_row['entity_matched'] = []
         table_row['refer_hop_1_entity'] = []
         row_entity = table_row['entity']
+        row_entity_surface_form = table_row['surface_form']
         
         for offset, prop_entity in enumerate(prop_entity_lst):
             prop_entity_normed = prop_entity.strip().lower()
@@ -303,7 +307,9 @@ def connect_polymer_to_1_hop_entity (abstract, polymer_lst, prop_entity_map):
                 table_row['refer_hop_1_entity'].append(refer_entity)
             else:
                 q_id += 1
-                q_info = get_corefer_question(idx, str(q_id), row_entity, prop_entity, prop)
+                q_info = get_corefer_question(idx, str(q_id), 
+                                              row_entity, row_entity_surface_form,
+                                              prop_entity, prop)
                 question_lst.append(q_info)
 
     if len(question_lst) > 0:
@@ -313,11 +319,13 @@ def connect_polymer_to_1_hop_entity (abstract, polymer_lst, prop_entity_map):
 def exact_match(text_1, text_2):
     return text_1.strip().lower() == text_2.strip().lower()
 
-def get_corefer_question(idx, q_id, row_entity, prop_entity, prop):
+def get_corefer_question(idx, q_id, 
+                        row_entity, row_entity_surface_form,  
+                        prop_entity, prop):
     question_part_1 = f'{q_id}. Which one of the following claims is true ?'
-    claim_a = f'    A. {row_entity} is the same as {prop_entity} .'
-    claim_b = f'    B. {row_entity} is a {prop_entity}  .'
-    claim_c = f'    C. {row_entity} is an ingredient of {prop_entity}.'
+    claim_a = f'    A. {row_entity_surface_form} is the same as {prop_entity} .'
+    claim_b = f'    B. {row_entity_surface_form} is a {prop_entity}  .'
+    claim_c = f'    C. {row_entity_surface_form} is an ingredient of {prop_entity}.'
     claim_d = f'    D. All the 3 choices above are false.'
     question = '\n'.join([question_part_1, claim_a, claim_b, claim_c, claim_d])
     question_info = {
@@ -335,14 +343,6 @@ def resolve_entity_refer(table_draft, passage, question_lst):
     max_row_idx = len(table_draft) - 1
     for idx in range(0, len(question_lst), batch_size):
         batch_questions = question_lst[idx:(idx+batch_size)]
-        
-        msg_lst = []
-        for q_info in batch_questions:
-            msg = f"{q_info['row_idx']}/{max_row_idx} matching {q_info['row_entity']} and {q_info['prop_entity']} on {q_info['prop']}"
-            msg_lst.append(msg)
-        batch_msg = '\n'.join(msg_lst)
-        #print('\n' + batch_msg)
-
         batch_question_text = '\n\n'.join([a['text'] for a in batch_questions])
         field_dict = {
             'passage':passage,
@@ -364,7 +364,7 @@ def resolve_entity_refer(table_draft, passage, question_lst):
         
 def get_answer_choice(response):
     answer_dict = {}
-    tag = 'So, the answer choice for question'
+    tag = 'the answer choice for question'
     res_lines = response.split('\n')
     for line in res_lines:
         idx = line.find(tag)
