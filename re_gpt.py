@@ -125,14 +125,17 @@ def get_all_polymers(passage):
         polymer_names = ' , '.join([a['surface_form'] for a in polymer_lst])
         question_other = f'What are the polymers other than {polymer_names} ?'
         polymer_other_lst = get_polymers(passage, question_other)
+        exists_new_polmer = False
         if len(polymer_other_lst) > 0:
             polymer_dict = {}
             for polymer in polymer_lst:
                 polymer_dict[polymer['entity']] = polymer
             for polymer_other in polymer_other_lst:
                 if polymer_other['entity'] not in polymer_dict:
-                    print('get more polymers')
+                    exists_new_polmer = True
                     polymer_lst.append(polymer_other)
+        if exists_new_polmer:
+            print('get more polymers')
         else:
             print('no more polymers')
     return polymer_lst

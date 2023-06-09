@@ -12,5 +12,6 @@ Let's think step by step:
 {reasoning steps}
 Therefore, the answer is the table:
 full name | short name
+Or report "No polymers" 
 If {short name} contains multiple polymers, separate them with " #@ "
 '''
