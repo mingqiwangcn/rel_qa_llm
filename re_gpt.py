@@ -100,7 +100,7 @@ def main():
         print(f'Passage {idx+1}. Setp 5, Get 1-hop property and numbers')
         hop_1_table = get_1_hop_val_from_prop(abstract, polymer_table)
         
-        write_log(args, idx, hop_1_table, '1_hop_table.json')
+        write_log(data_dir, hop_1_table, '1_hop_table.json')
         hop_1_table = read_log(data_dir, '1_hop_table.json')
         show_table(hop_1_table)
 
