@@ -1,13 +1,12 @@
-You are given a passage and need to follow the instructions to extract data from the passage.
-
-Instructions:
-1. Extract entity, propety name and property value from the passage. 
-2. Set the unit of property value to be "N/A" if there is no unit.
-3. Set property value to be "N/A" if it is not a number.
-4. The output should end with a table containing 5 columns, "row number", "entity", "property name" and "property value" and "unit of value" with 4 "|" to seperate them
+You are given a passage and need to answer a question.
 
 Passage:
 {{passage}}
 
-Answer:
-row number | entity | property name | property value | unit of value
+Question
+What are the numeric metrics and the associated property names and entities?
+
+Answer the question in a table format:
+row number | entity | property name | numeric metric | unit of measurement
+If there is no unit of measurement Set unit of measurement to "n/a"
+If numeric metric is not a number, set numeric metric to 'n/a'

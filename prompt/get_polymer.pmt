@@ -14,4 +14,5 @@ Therefore, the answer is the table:
 full name | short name
 Or report "No polymers" 
 If {short name} contains multiple polymers, separate them with " #@ "
+If there is no short name, set short name to 'n/a'
 '''

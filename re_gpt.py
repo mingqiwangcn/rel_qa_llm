@@ -160,7 +160,9 @@ def get_polymers(passage, question):
         full_name = items[0].strip()
         if name_text == '---' and full_name == '---':
             continue
-        if name_text == '-' and full_name != '-':
+        if name_text == 'n/a' and full_name == 'n/a':
+            continue
+        if name_text == 'n/a' and full_name != 'n/a':
             name_text = full_name
         name_lst = name_text.split('#@')
         for name in name_lst:
@@ -188,6 +190,9 @@ def get_all_numeric_props(passage):
     prop_set = set()
     for line in res_lines:
         items = line.split(' | ')
+        row_number = normalize_text(items[0])
+        if row_number in ['row number', '---', '| row number', '| ---']:
+            continue
         prop_val = normalize_text(items[3])
         prop_unit = normalize_text(items[4])
         if prop_val == 'n/a' or prop_unit == 'n/a':
