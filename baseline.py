@@ -1,7 +1,7 @@
 import os
 import gpt
 import argparse
-from re_gpt import read_abstract, read_prompt
+from re_gpt import read_abstract, read_prompt, set_gpt_logger
 
 def main():
     api_key = os.getenv('OPENAI_API_KEY')
@@ -11,7 +11,13 @@ def main():
     gpt.set_key(api_key)
     args = get_args()
     for idx, abstract in enumerate(read_abstract(args)):
+        if abstract is None:
+            continue
+        data_dir = f'{args.out_dir}/passage_{idx+1}'
+        f_log = set_gpt_logger(data_dir)
         response = get_table(abstract)
+        f_log.close()
+        
 
 def get_table(abstract):
     field_dict_number = {

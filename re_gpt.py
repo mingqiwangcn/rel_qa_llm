@@ -160,7 +160,8 @@ def get_polymers(passage, question):
         full_name = items[0].strip()
         if name_text == '---' and full_name == '---':
             continue
-        assert normalize_text(name_text) != 'n/a'
+        if name_text == '-' and full_name != '-':
+            name_text = full_name
         name_lst = name_text.split('#@')
         for name in name_lst:
             polymer_info = {
