@@ -90,7 +90,7 @@ def main():
         if prop_entity_map is None:
             print(f'Can not find hop 1 entities')
             continue
-        
+
         write_log(data_dir, prop_entity_map, '1_hop_entity.json')
         prop_entity_map = read_log(data_dir, '1_hop_entity.json')
         show_dict(prop_entity_map)
@@ -452,6 +452,7 @@ def get_1_hop_entity(abstract, prop_lst):
     
     batch_question_text = '\n'.join(question_lst)
     field_dict = {
+        'q_num':str(len(question_lst)),
         'passage':abstract,
         'questions':batch_question_text
     }
@@ -477,7 +478,8 @@ def get_1_hop_entity(abstract, prop_lst):
         answer_info_lst.append(answer_info)
     prop_entity_passage = '\n'.join([a['prop_entity'] for a in answer_info_lst])
     prop_1_hop_entities = extract_1_hop_entity(prop_entity_passage)
-    assert len(prop_1_hop_entities) == len(answer_info_lst)
+    if len(prop_1_hop_entities) != len(answer_info_lst):
+        return None
     
     prop_hop_1_ent_map = {}
     for idx, answer_info in enumerate(answer_info_lst):

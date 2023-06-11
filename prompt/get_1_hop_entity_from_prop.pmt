@@ -1,4 +1,4 @@
-You are given a passage and need to follow the instructions to answer each question.
+You are given a passage and need to follow the instructions to answer {{q_num}} questions.
 
 Instructions:
 1. Each answer must be in the format "The {property name} of {what} is given explicitly as {value with unit} | {evidence sentence}"
