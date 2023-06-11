@@ -77,7 +77,7 @@ def main():
         show_table(polymer_lst)
         if len(polymer_lst) == 0:
             print(f'There is no polymers for passage {idx+1}')
-            return
+            continue
         
         print(f'Passage {idx+1}. Step 2, Get property names')
         prop_lst = get_all_numeric_props(abstract)
@@ -87,6 +87,10 @@ def main():
         
         print(f'Passage {idx+1}. Step 3, Get 1-hop entity by property name')
         prop_entity_map = get_1_hop_entity(abstract, prop_lst)
+        if prop_entity_map is None:
+            print(f'Can not find hop 1 entities')
+            continue
+        
         write_log(data_dir, prop_entity_map, '1_hop_entity.json')
         prop_entity_map = read_log(data_dir, '1_hop_entity.json')
         show_dict(prop_entity_map)
@@ -456,7 +460,9 @@ def get_1_hop_entity(abstract, prop_lst):
     #print(entity_prompt)
     response = gpt.chat_complete(entity_prompt)
     answer_lst = response.split('\n')
-    assert (len(prop_lst) == len(answer_lst))
+    if len(prop_lst) != len(answer_lst):
+        return None
+    
     sep = ' | '
     answer_info_lst = []
     for idx, answe_text in enumerate(answer_lst):
