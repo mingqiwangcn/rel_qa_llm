@@ -194,8 +194,11 @@ def get_all_numeric_props(passage):
     prop_set = set()
     for line in res_lines:
         items = line.split(' | ')
-        row_number = normalize_text(items[0])
-        if row_number in ['row number', '---', '| row number', '| ---']:
+        row_number_text = normalize_text(items[0])
+        if row_number_text[0] == '|':
+            row_number_text = row_number_text[1:]
+        row_number_text = row_number_text.strip()
+        if not row_number_text.isnumeric():
             continue
         prop_val = normalize_text(items[3])
         prop_unit = normalize_text(items[4])
